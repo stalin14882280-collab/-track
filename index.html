@@ -22,25 +22,13 @@
         }
 
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .container {
@@ -49,13 +37,14 @@
             padding: 20px;
         }
 
-        /* Навбар */
         .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 20px 0;
             animation: slideIn 0.5s ease;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         .logo {
@@ -70,6 +59,7 @@
         .nav-links {
             display: flex;
             gap: 30px;
+            flex-wrap: wrap;
         }
 
         .nav-link {
@@ -95,6 +85,7 @@
             padding: 8px 20px;
             border-radius: 50px;
             backdrop-filter: blur(10px);
+            flex-wrap: wrap;
         }
 
         .avatar {
@@ -108,7 +99,6 @@
             font-weight: bold;
         }
 
-        /* Герой */
         .hero {
             text-align: center;
             padding: 60px 0;
@@ -129,7 +119,6 @@
             margin-bottom: 30px;
         }
 
-        /* Кнопки */
         .btn {
             padding: 12px 28px;
             border: none;
@@ -161,7 +150,6 @@
             color: white;
         }
 
-        /* Карточки треков */
         .section-title {
             font-size: 28px;
             margin: 40px 0 20px;
@@ -223,6 +211,8 @@
             align-items: center;
             font-size: 12px;
             color: rgba(255,255,255,0.5);
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .track-status {
@@ -265,7 +255,6 @@
             background: #ff6b6b;
         }
 
-        /* Плеер */
         .player {
             position: fixed;
             bottom: 0;
@@ -282,6 +271,7 @@
             transform: translateY(100%);
             transition: transform 0.3s;
             z-index: 1000;
+            flex-wrap: wrap;
         }
 
         .player.active {
@@ -290,11 +280,13 @@
 
         .player-info {
             flex: 1;
+            min-width: 150px;
         }
 
         .player-controls {
             display: flex;
             gap: 15px;
+            align-items: center;
         }
 
         .player-controls button {
@@ -302,6 +294,44 @@
             border: none;
             color: white;
             font-size: 20px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .player-controls button:hover {
+            color: #ff6b6b;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px 12px;
+            border-radius: 30px;
+        }
+
+        .volume-control i {
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .volume-slider {
+            width: 80px;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #ff6b6b;
+            border-radius: 50%;
             cursor: pointer;
         }
 
@@ -312,6 +342,7 @@
             border-radius: 2px;
             cursor: pointer;
             position: relative;
+            min-width: 150px;
         }
 
         .progress-fill {
@@ -321,7 +352,6 @@
             width: 0%;
         }
 
-        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
@@ -420,6 +450,9 @@
             .hero h1 { font-size: 32px; }
             .tracks-grid { grid-template-columns: 1fr; }
             .player { flex-direction: column; padding: 15px; }
+            .player-controls { width: 100%; justify-content: center; }
+            .progress-bar { width: 100%; }
+            .volume-control { margin-top: 5px; }
         }
     </style>
 </head>
@@ -479,6 +512,11 @@
         </div>
         <div class="player-controls">
             <button id="playBtn"><i class="fas fa-play"></i></button>
+            <div class="volume-control">
+                <i class="fas fa-volume-down" id="volumeDown"></i>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                <i class="fas fa-volume-up" id="volumeUp"></i>
+            </div>
         </div>
     </div>
 
@@ -529,6 +567,9 @@
         let tracks = [];
         let audio = new Audio();
         let isPlaying = false;
+        let currentTrackId = null;
+        let likedTracks = new Set();
+        let playedTracks = new Set();
 
         function loadData() {
             const saved = localStorage.getItem('plustrack_web_data');
@@ -536,6 +577,8 @@
                 const data = JSON.parse(saved);
                 tracks = data.tracks || [];
                 currentUser = data.currentUser;
+                if (data.likedTracks) likedTracks = new Set(data.likedTracks);
+                if (data.playedTracks) playedTracks = new Set(data.playedTracks);
             } else {
                 tracks = [
                     { id: "1", title: "Ночь", artist: "Улица Восток", genre: "Рок", userId: "admin", status: "approved", likes: 15, plays: 128 },
@@ -547,7 +590,12 @@
         }
 
         function saveData() {
-            localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks, currentUser }));
+            localStorage.setItem('plustrack_web_data', JSON.stringify({ 
+                tracks, 
+                currentUser,
+                likedTracks: Array.from(likedTracks),
+                playedTracks: Array.from(playedTracks)
+            }));
         }
 
         function showNotification(message, type) {
@@ -561,12 +609,23 @@
 
         function playTrack(track) {
             if (!track) return;
+            if (track.status !== 'approved') {
+                showNotification('Этот трек недоступен для прослушивания', 'error');
+                return;
+            }
+            
             document.getElementById('currentTrackTitle').textContent = track.title;
             document.getElementById('currentTrackArtist').textContent = track.artist;
             document.getElementById('player').classList.add('active');
+            currentTrackId = track.id;
+            
+            if (!playedTracks.has(track.id)) {
+                track.plays = (track.plays || 0) + 1;
+                playedTracks.add(track.id);
+                saveData();
+            }
+            
             showNotification(`🎵 Сейчас играет: ${track.title} - ${track.artist}`, 'info');
-            track.plays = (track.plays || 0) + 1;
-            saveData();
             renderAll();
         }
 
@@ -581,16 +640,31 @@
             isPlaying = !isPlaying;
         }
 
+        function setVolume(value) {
+            const vol = Math.max(0, Math.min(100, value));
+            audio.volume = vol / 100;
+            document.getElementById('volumeSlider').value = vol;
+        }
+
         function likeTrack(trackId) {
             const track = tracks.find(t => t.id === trackId);
-            if (track && currentUser) {
-                track.likes = (track.likes || 0) + 1;
-                saveData();
-                renderAll();
-                showNotification(`❤️ Трек "${track.title}" понравился!`, 'success');
-            } else if (!currentUser) {
+            if (!track) return;
+            if (!currentUser) {
                 showNotification('Войдите в аккаунт, чтобы ставить лайки', 'error');
+                return;
             }
+            
+            const likeKey = `${currentUser.username}_${trackId}`;
+            if (likedTracks.has(likeKey)) {
+                showNotification('Вы уже поставили лайк этому треку', 'error');
+                return;
+            }
+            
+            track.likes = (track.likes || 0) + 1;
+            likedTracks.add(likeKey);
+            saveData();
+            renderAll();
+            showNotification(`❤️ Лайк треку "${track.title}"!`, 'success');
         }
 
         function uploadTrack(title, artist, genre, file) {
@@ -607,7 +681,6 @@
                 status: 'pending',
                 likes: 0,
                 plays: 0,
-                file: file,
                 uploadDate: new Date().toISOString()
             };
             tracks.push(newTrack);
@@ -637,13 +710,25 @@
             }
         }
 
+        function hasUserLiked(trackId) {
+            if (!currentUser) return false;
+            return likedTracks.has(`${currentUser.username}_${trackId}`);
+        }
+
+        function hasUserPlayed(trackId) {
+            return playedTracks.has(trackId);
+        }
+
         function renderTracks(tracksList, container, showActions = true, isModeration = false) {
             if (!container) return;
             if (tracksList.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:50px;color:rgba(255,255,255,0.5);">🎵 Нет треков</div>';
                 return;
             }
-            container.innerHTML = tracksList.map(track => `
+            container.innerHTML = tracksList.map(track => {
+                const userLiked = hasUserLiked(track.id);
+                const isOwnTrack = currentUser && track.userId === currentUser.username;
+                return `
                 <div class="track-card">
                     <div class="track-cover">🎵</div>
                     <div class="track-title">${escapeHtml(track.title)}</div>
@@ -652,12 +737,13 @@
                         <span>🎭 ${escapeHtml(track.genre)}</span>
                         <span>❤️ ${track.likes || 0}</span>
                         <span>▶️ ${track.plays || 0}</span>
-                        ${track.status !== 'approved' ? `<span class="track-status status-${track.status}">${track.status === 'pending' ? '⏳ на модерации' : '❌ отклонен'}</span>` : ''}
+                        ${track.status !== 'approved' && !isModeration ? `<span class="track-status status-${track.status}">${track.status === 'pending' ? '⏳ на модерации' : '❌ отклонен'}</span>` : ''}
+                        ${isOwnTrack && track.status === 'pending' && !isModeration ? `<span class="track-status status-pending">⏳ ожидает модерации</span>` : ''}
                     </div>
                     ${showActions && track.status === 'approved' ? `
                         <div class="track-actions">
                             <button class="btn-play" onclick="playTrackById('${track.id}')">▶ Прослушать</button>
-                            <button class="btn-like" onclick="likeTrackById('${track.id}')">❤️ Лайк</button>
+                            <button class="btn-like ${userLiked ? 'liked' : ''}" onclick="likeTrackById('${track.id}')">${userLiked ? '❤️ Лайк' : '🤍 Лайк'}</button>
                         </div>
                     ` : ''}
                     ${isModeration && track.status === 'pending' ? `
@@ -667,7 +753,7 @@
                         </div>
                     ` : ''}
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function renderAll() {
@@ -736,9 +822,22 @@
             updateUserUI();
             renderAll();
             
+            const volumeSlider = document.getElementById('volumeSlider');
+            volumeSlider.addEventListener('input', (e) => setVolume(e.target.value));
+            document.getElementById('volumeDown').onclick = () => setVolume(audio.volume * 100 - 10);
+            document.getElementById('volumeUp').onclick = () => setVolume(audio.volume * 100 + 10);
+            setVolume(70);
+            
             document.getElementById('authBtn').onclick = () => {
-                if (currentUser) { currentUser = null; saveData(); updateUserUI(); renderAll(); showNotification('Вы вышли из аккаунта', 'info'); }
-                else document.getElementById('authModal').style.display = 'flex';
+                if (currentUser) { 
+                    currentUser = null; 
+                    likedTracks.clear();
+                    playedTracks.clear();
+                    saveData(); 
+                    updateUserUI(); 
+                    renderAll(); 
+                    showNotification('Вы вышли из аккаунта', 'info'); 
+                } else document.getElementById('authModal').style.display = 'flex';
             };
             document.getElementById('moderatorBtn').onclick = () => { document.getElementById('moderatorModal').style.display = 'flex'; };
             document.getElementById('enterModerator').onclick = () => {
