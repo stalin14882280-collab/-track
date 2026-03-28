@@ -21,28 +21,6 @@
             overflow-x: hidden;
         }
 
-        /* Анимации */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(255,107,107,0.3); }
-            50% { box-shadow: 0 0 20px rgba(255,107,107,0.6); }
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -54,9 +32,15 @@
             }
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .container {
@@ -124,7 +108,7 @@
             font-weight: bold;
         }
 
-        /* Главный контент */
+        /* Герой */
         .hero {
             text-align: center;
             padding: 60px 0;
@@ -200,7 +184,6 @@
             padding: 20px;
             transition: all 0.3s;
             animation: fadeInUp 0.5s ease;
-            cursor: pointer;
             border: 1px solid rgba(255,255,255,0.1);
         }
 
@@ -320,11 +303,6 @@
             color: white;
             font-size: 20px;
             cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .player-controls button:hover {
-            color: #ff6b6b;
         }
 
         .progress-bar {
@@ -341,10 +319,9 @@
             background: #ff6b6b;
             border-radius: 2px;
             width: 0%;
-            transition: width 0.1s linear;
         }
 
-        /* Модальное окно загрузки */
+        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
@@ -361,7 +338,6 @@
 
         .modal.active {
             display: flex;
-            animation: fadeInUp 0.3s ease;
         }
 
         .modal-content {
@@ -382,7 +358,6 @@
             color: white;
         }
 
-        /* Уведомления */
         .notification {
             position: fixed;
             bottom: 100px;
@@ -395,7 +370,6 @@
             z-index: 1500;
         }
 
-        /* Форма входа */
         .auth-modal {
             display: flex;
             position: fixed;
@@ -434,7 +408,14 @@
             display: none;
         }
 
-        /* Адаптив */
+        .moderator-badge {
+            background: #ff6b6b;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
         @media (max-width: 768px) {
             .hero h1 { font-size: 32px; }
             .tracks-grid { grid-template-columns: 1fr; }
@@ -444,37 +425,30 @@
 </head>
 <body>
     <div class="container">
-        <!-- Навбар -->
         <nav class="navbar">
             <div class="logo">🎵 +TRACK</div>
             <div class="nav-links">
                 <a class="nav-link active" data-page="home">Главная</a>
                 <a class="nav-link" data-page="my-tracks">Мои треки</a>
-                <a class="nav-link" data-page="moderation">Модерация</a>
+                <a class="nav-link" data-page="moderation" id="moderationTab" style="display: none;">🛡️ Модерация</a>
             </div>
             <div class="user-info" id="userInfo">
                 <div class="avatar" id="userAvatar">?</div>
                 <span id="userName">Гость</span>
                 <button class="btn-outline" id="authBtn" style="padding: 5px 15px;">Войти</button>
+                <button class="btn-outline" id="moderatorBtn" style="padding: 5px 15px; background: #ff6b6b; border-color: #ff6b6b; display: none;">👑 Модератор</button>
             </div>
         </nav>
 
-        <!-- Основной контент -->
         <div id="homePage">
             <div class="hero">
                 <h1>Музыкальная платформа<br>нового поколения</h1>
                 <p>Слушай, загружай, делись — всё бесплатно</p>
                 <button class="btn btn-primary" id="uploadBtn">⬆️ Загрузить трек</button>
             </div>
-
-            <div class="section-title">
-                <span>🎯 Рекомендации</span>
-            </div>
+            <div class="section-title"><span>🎯 Рекомендации</span></div>
             <div class="tracks-grid" id="recommendationsGrid"></div>
-
-            <div class="section-title">
-                <span>🔥 Популярные треки</span>
-            </div>
+            <div class="section-title"><span>🔥 Популярные треки</span></div>
             <div class="tracks-grid" id="popularGrid"></div>
         </div>
 
@@ -495,7 +469,6 @@
         </div>
     </div>
 
-    <!-- Плеер -->
     <div class="player" id="player">
         <div class="player-info">
             <div class="track-title" id="currentTrackTitle">Выберите трек</div>
@@ -506,32 +479,34 @@
         </div>
         <div class="player-controls">
             <button id="playBtn"><i class="fas fa-play"></i></button>
-            <button id="prevBtn"><i class="fas fa-backward"></i></button>
-            <button id="nextBtn"><i class="fas fa-forward"></i></button>
         </div>
     </div>
 
-    <!-- Модальное окно загрузки -->
     <div class="modal" id="uploadModal">
         <div class="modal-content">
             <h2>⬆️ Загрузить трек</h2>
             <input type="text" id="trackTitle" placeholder="Название трека">
             <input type="text" id="trackArtist" placeholder="Исполнитель">
             <select id="trackGenre">
-                <option>Рок</option>
-                <option>Поп</option>
-                <option>Хип-хоп</option>
-                <option>Электроника</option>
-                <option>Джаз</option>
-                <option>Классика</option>
+                <option>Рок</option><option>Поп</option><option>Хип-хоп</option>
+                <option>Электроника</option><option>Джаз</option><option>Классика</option>
             </select>
             <input type="file" id="trackFile" accept="audio/*">
-            <button class="btn btn-primary" id="submitUpload" style="margin-top: 20px;">Загрузить</button>
-            <button class="btn-outline" id="closeModal" style="margin-top: 10px;">Отмена</button>
+            <button class="btn btn-primary" id="submitUpload">Загрузить</button>
+            <button class="btn-outline" id="closeModal">Отмена</button>
         </div>
     </div>
 
-    <!-- Форма входа -->
+    <div class="modal" id="moderatorModal">
+        <div class="modal-content">
+            <h2>👑 Вход в режим модератора</h2>
+            <input type="password" id="moderatorPassword" placeholder="Пароль модератора">
+            <button class="btn btn-primary" id="enterModerator">Войти</button>
+            <button class="btn-outline" id="closeModeratorModal">Отмена</button>
+            <div id="moderatorError" style="color: #e74c3c; margin-top: 10px; display: none;">Неверный пароль!</div>
+        </div>
+    </div>
+
     <div class="auth-modal" id="authModal">
         <div class="auth-card">
             <h2>🎵 +TRACK</h2>
@@ -549,14 +524,12 @@
     </div>
 
     <script>
-        // ========== ДАННЫЕ ==========
         let currentUser = null;
+        let isModerator = false;
         let tracks = [];
-        let currentTrackIndex = 0;
-        let isPlaying = false;
         let audio = new Audio();
+        let isPlaying = false;
 
-        // Загрузка данных из localStorage
         function loadData() {
             const saved = localStorage.getItem('plustrack_web_data');
             if (saved) {
@@ -564,43 +537,34 @@
                 tracks = data.tracks || [];
                 currentUser = data.currentUser;
             } else {
-                // Демо-треки
                 tracks = [
-                    { id: "1", title: "Ночь", artist: "Улица Восток", genre: "Рок", userId: "admin", status: "approved", likes: 15, plays: 128, file: null },
-                    { id: "2", title: "Рассвет", artist: "Елена Солнцева", genre: "Поп", userId: "admin", status: "approved", likes: 23, plays: 245, file: null },
-                    { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567, file: null },
-                    { id: "4", title: "Новый путь", artist: "Независимые", genre: "Инди-рок", userId: "user1", status: "pending", likes: 0, plays: 0, file: null },
-                    { id: "5", title: "Свободный полет", artist: "Артем Сам", genre: "Хип-хоп", userId: "user2", status: "pending", likes: 0, plays: 0, file: null }
+                    { id: "1", title: "Ночь", artist: "Улица Восток", genre: "Рок", userId: "admin", status: "approved", likes: 15, plays: 128 },
+                    { id: "2", title: "Рассвет", artist: "Елена Солнцева", genre: "Поп", userId: "admin", status: "approved", likes: 23, plays: 245 },
+                    { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567 }
                 ];
             }
             saveData();
         }
 
         function saveData() {
-            localStorage.setItem('plustrack_web_data', JSON.stringify({
-                tracks: tracks,
-                currentUser: currentUser
-            }));
+            localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks, currentUser }));
         }
 
-        // ========== АУДИО ПЛЕЕР ==========
+        function showNotification(message, type) {
+            const notif = document.createElement('div');
+            notif.className = 'notification';
+            notif.style.background = type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : '#3498db');
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
+
         function playTrack(track) {
             if (!track) return;
             document.getElementById('currentTrackTitle').textContent = track.title;
             document.getElementById('currentTrackArtist').textContent = track.artist;
             document.getElementById('player').classList.add('active');
-            
-            // Симуляция воспроизведения (без реального файла)
-            if (track.file) {
-                audio.src = URL.createObjectURL(track.file);
-                audio.play();
-                isPlaying = true;
-                document.getElementById('playBtn').innerHTML = '<i class="fas fa-pause"></i>';
-            } else {
-                // Демо-воспроизведение
-                showNotification(`🎵 Сейчас играет: ${track.title} - ${track.artist}`, 'info');
-            }
-            
+            showNotification(`🎵 Сейчас играет: ${track.title} - ${track.artist}`, 'info');
             track.plays = (track.plays || 0) + 1;
             saveData();
             renderAll();
@@ -617,7 +581,42 @@
             isPlaying = !isPlaying;
         }
 
-        // ========== МОДЕРАЦИЯ ==========
+        function likeTrack(trackId) {
+            const track = tracks.find(t => t.id === trackId);
+            if (track && currentUser) {
+                track.likes = (track.likes || 0) + 1;
+                saveData();
+                renderAll();
+                showNotification(`❤️ Трек "${track.title}" понравился!`, 'success');
+            } else if (!currentUser) {
+                showNotification('Войдите в аккаунт, чтобы ставить лайки', 'error');
+            }
+        }
+
+        function uploadTrack(title, artist, genre, file) {
+            if (!currentUser) {
+                showNotification('Войдите в аккаунт для загрузки треков', 'error');
+                return false;
+            }
+            const newTrack = {
+                id: Date.now().toString(),
+                title: title,
+                artist: artist,
+                genre: genre,
+                userId: currentUser.username,
+                status: 'pending',
+                likes: 0,
+                plays: 0,
+                file: file,
+                uploadDate: new Date().toISOString()
+            };
+            tracks.push(newTrack);
+            saveData();
+            renderAll();
+            showNotification(`📤 Трек "${title}" отправлен на модерацию!`, 'success');
+            return true;
+        }
+
         function approveTrack(trackId) {
             const track = tracks.find(t => t.id === trackId);
             if (track) {
@@ -638,54 +637,13 @@
             }
         }
 
-        function likeTrack(trackId) {
-            const track = tracks.find(t => t.id === trackId);
-            if (track && currentUser) {
-                track.likes = (track.likes || 0) + 1;
-                saveData();
-                renderAll();
-                showNotification(`❤️ Трек "${track.title}" понравился!`, 'success');
-            } else if (!currentUser) {
-                showNotification('Войдите в аккаунт, чтобы ставить лайки', 'error');
-            }
-        }
-
-        // ========== ЗАГРУЗКА ТРЕКА ==========
-        function uploadTrack(title, artist, genre, file) {
-            if (!currentUser) {
-                showNotification('Войдите в аккаунт для загрузки треков', 'error');
-                return false;
-            }
-            
-            const newTrack = {
-                id: Date.now().toString(),
-                title: title,
-                artist: artist,
-                genre: genre,
-                userId: currentUser.username,
-                status: 'pending',
-                likes: 0,
-                plays: 0,
-                file: file,
-                uploadDate: new Date().toISOString()
-            };
-            
-            tracks.push(newTrack);
-            saveData();
-            renderAll();
-            showNotification(`📤 Трек "${title}" отправлен на модерацию!`, 'success');
-            return true;
-        }
-
-        // ========== ОТОБРАЖЕНИЕ ==========
-        function renderTracks(tracks, container, showActions = true) {
+        function renderTracks(tracksList, container, showActions = true, isModeration = false) {
             if (!container) return;
-            if (tracks.length === 0) {
+            if (tracksList.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:50px;color:rgba(255,255,255,0.5);">🎵 Нет треков</div>';
                 return;
             }
-            
-            container.innerHTML = tracks.map(track => `
+            container.innerHTML = tracksList.map(track => `
                 <div class="track-card">
                     <div class="track-cover">🎵</div>
                     <div class="track-title">${escapeHtml(track.title)}</div>
@@ -702,7 +660,7 @@
                             <button class="btn-like" onclick="likeTrackById('${track.id}')">❤️ Лайк</button>
                         </div>
                     ` : ''}
-                    ${showActions && track.status === 'pending' && currentUser && (currentUser.username === 'admin' || track.userId === currentUser.username) ? `
+                    ${isModeration && track.status === 'pending' ? `
                         <div class="track-actions">
                             <button class="btn-play" style="background:#27ae60;" onclick="approveTrackById('${track.id}')">✅ Одобрить</button>
                             <button class="btn-play" style="background:#e74c3c;" onclick="rejectTrackById('${track.id}')">❌ Отклонить</button>
@@ -713,15 +671,11 @@
         }
 
         function renderAll() {
-            // Рекомендации
-            const recommendations = tracks.filter(t => t.status === 'approved').slice(0, 4);
-            renderTracks(recommendations, document.getElementById('recommendationsGrid'), true);
-            
-            // Популярные
-            const popular = [...tracks.filter(t => t.status === 'approved')].sort((a,b) => (b.plays||0) - (a.plays||0)).slice(0, 4);
+            const approved = tracks.filter(t => t.status === 'approved');
+            renderTracks(approved.slice(0, 4), document.getElementById('recommendationsGrid'), true);
+            const popular = [...approved].sort((a,b) => (b.plays||0) - (a.plays||0)).slice(0, 4);
             renderTracks(popular, document.getElementById('popularGrid'), true);
             
-            // Мои треки
             if (currentUser) {
                 const myTracks = tracks.filter(t => t.userId === currentUser.username);
                 renderTracks(myTracks, document.getElementById('myTracksGrid'), true);
@@ -729,111 +683,83 @@
                 document.getElementById('myTracksGrid').innerHTML = '<div style="text-align:center;padding:50px;">Войдите в аккаунт, чтобы видеть свои треки</div>';
             }
             
-            // Модерация (только для админа)
-            if (currentUser && currentUser.username === 'admin') {
+            if (isModerator) {
                 const pending = tracks.filter(t => t.status === 'pending');
-                renderTracks(pending, document.getElementById('moderationGrid'), true);
+                renderTracks(pending, document.getElementById('moderationGrid'), false, true);
             } else {
-                document.getElementById('moderationGrid').innerHTML = '<div style="text-align:center;padding:50px;">Доступно только администратору</div>';
+                document.getElementById('moderationGrid').innerHTML = '<div style="text-align:center;padding:50px;">Войдите как модератор для доступа</div>';
             }
         }
 
-        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { return m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'; }); }
 
-        function showNotification(message, type) {
-            const notif = document.createElement('div');
-            notif.className = 'notification';
-            notif.style.background = type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : '#3498db');
-            notif.textContent = message;
-            document.body.appendChild(notif);
-            setTimeout(() => notif.remove(), 3000);
-        }
-
-        // Глобальные функции для onclick
-        window.playTrackById = (id) => {
-            const track = tracks.find(t => t.id === id);
-            if (track) playTrack(track);
-        };
+        window.playTrackById = (id) => { const track = tracks.find(t => t.id === id); if (track) playTrack(track); };
         window.likeTrackById = (id) => likeTrack(id);
         window.approveTrackById = (id) => approveTrack(id);
         window.rejectTrackById = (id) => rejectTrack(id);
 
-        // ========== НАВИГАЦИЯ ==========
         function showPage(page) {
             document.getElementById('homePage').style.display = page === 'home' ? 'block' : 'none';
             document.getElementById('myTracksPage').style.display = page === 'my-tracks' ? 'block' : 'none';
             document.getElementById('moderationPage').style.display = page === 'moderation' ? 'block' : 'none';
-            
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.toggle('active', link.dataset.page === page);
-            });
-            
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.page === page));
             renderAll();
         }
 
-        // ========== АВТОРИЗАЦИЯ ==========
         function updateUserUI() {
             if (currentUser) {
                 document.getElementById('userName').textContent = currentUser.username;
                 document.getElementById('userAvatar').textContent = currentUser.username[0].toUpperCase();
                 document.getElementById('authBtn').textContent = 'Выйти';
+                document.getElementById('moderatorBtn').style.display = 'inline-block';
             } else {
                 document.getElementById('userName').textContent = 'Гость';
                 document.getElementById('userAvatar').textContent = '?';
                 document.getElementById('authBtn').textContent = 'Войти';
+                document.getElementById('moderatorBtn').style.display = 'none';
+                isModerator = false;
+                document.getElementById('moderationTab').style.display = 'none';
+            }
+            if (isModerator) {
+                document.getElementById('moderationTab').style.display = 'inline-block';
+                document.getElementById('moderatorBtn').style.background = '#27ae60';
+                document.getElementById('moderatorBtn').innerHTML = '👑 Модератор';
+            } else {
+                document.getElementById('moderationTab').style.display = 'none';
+                document.getElementById('moderatorBtn').style.background = '#ff6b6b';
+                document.getElementById('moderatorBtn').innerHTML = '👑 Модератор';
             }
         }
 
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         function init() {
             loadData();
             updateUserUI();
             renderAll();
             
-            // События
             document.getElementById('authBtn').onclick = () => {
-                if (currentUser) {
-                    currentUser = null;
-                    saveData();
-                    updateUserUI();
-                    renderAll();
-                    showNotification('Вы вышли из аккаунта', 'info');
-                } else {
-                    document.getElementById('authModal').style.display = 'flex';
-                }
+                if (currentUser) { currentUser = null; saveData(); updateUserUI(); renderAll(); showNotification('Вы вышли из аккаунта', 'info'); }
+                else document.getElementById('authModal').style.display = 'flex';
             };
+            document.getElementById('moderatorBtn').onclick = () => { document.getElementById('moderatorModal').style.display = 'flex'; };
+            document.getElementById('enterModerator').onclick = () => {
+                const pwd = document.getElementById('moderatorPassword').value;
+                if (pwd === '060510') { isModerator = true; updateUserUI(); renderAll(); document.getElementById('moderatorModal').style.display = 'none'; showNotification('Вы вошли как модератор!', 'success'); }
+                else document.getElementById('moderatorError').style.display = 'block';
+            };
+            document.getElementById('closeModeratorModal').onclick = () => { document.getElementById('moderatorModal').style.display = 'none'; document.getElementById('moderatorError').style.display = 'none'; };
             
             document.getElementById('doLogin').onclick = () => {
                 const username = document.getElementById('loginUsername').value;
                 const password = document.getElementById('loginPassword').value;
-                if (username === 'admin' && password === 'admin') {
-                    currentUser = { username: 'admin', role: 'admin' };
+                if (username && password) {
+                    currentUser = { username: username, role: 'user' };
                     saveData();
                     updateUserUI();
                     document.getElementById('authModal').style.display = 'none';
                     renderAll();
-                    showNotification('Добро пожаловать, администратор!', 'success');
-                } else if (username === 'user' && password === 'user') {
-                    currentUser = { username: 'user', role: 'user' };
-                    saveData();
-                    updateUserUI();
-                    document.getElementById('authModal').style.display = 'none';
-                    renderAll();
-                    showNotification('Добро пожаловать!', 'success');
-                } else {
-                    document.getElementById('authError').style.display = 'block';
+                    showNotification(`Добро пожаловать, ${username}!`, 'success');
                 }
             };
-            
             document.getElementById('doRegister').onclick = () => {
                 const username = document.getElementById('regUsername').value;
                 const password = document.getElementById('regPassword').value;
@@ -847,74 +773,28 @@
                 }
             };
             
-            document.getElementById('uploadBtn').onclick = () => {
-                if (!currentUser) {
-                    showNotification('Войдите в аккаунт для загрузки треков', 'error');
-                    return;
-                }
-                document.getElementById('uploadModal').style.display = 'flex';
-            };
-            
-            document.getElementById('myUploadBtn').onclick = () => {
-                if (!currentUser) {
-                    showNotification('Войдите в аккаунт для загрузки треков', 'error');
-                    return;
-                }
-                document.getElementById('uploadModal').style.display = 'flex';
-            };
-            
+            document.getElementById('uploadBtn').onclick = () => { if (currentUser) document.getElementById('uploadModal').style.display = 'flex'; else showNotification('Войдите в аккаунт', 'error'); };
+            document.getElementById('myUploadBtn').onclick = () => { if (currentUser) document.getElementById('uploadModal').style.display = 'flex'; else showNotification('Войдите в аккаунт', 'error'); };
             document.getElementById('submitUpload').onclick = () => {
                 const title = document.getElementById('trackTitle').value;
                 const artist = document.getElementById('trackArtist').value;
                 const genre = document.getElementById('trackGenre').value;
-                const fileInput = document.getElementById('trackFile');
-                const file = fileInput.files[0];
-                
-                if (!title || !artist) {
-                    showNotification('Заполните название и исполнителя', 'error');
-                    return;
-                }
-                
-                uploadTrack(title, artist, genre, file);
+                if (!title || !artist) { showNotification('Заполните название и исполнителя', 'error'); return; }
+                uploadTrack(title, artist, genre, null);
                 document.getElementById('uploadModal').style.display = 'none';
                 document.getElementById('trackTitle').value = '';
                 document.getElementById('trackArtist').value = '';
                 document.getElementById('trackFile').value = '';
             };
+            document.getElementById('closeModal').onclick = () => { document.getElementById('uploadModal').style.display = 'none'; };
             
-            document.getElementById('closeModal').onclick = () => {
-                document.getElementById('uploadModal').style.display = 'none';
-            };
-            
-            // Навигация
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.onclick = () => showPage(link.dataset.page);
-            });
-            
-            // Плеер
+            document.querySelectorAll('.nav-link').forEach(link => { link.onclick = () => showPage(link.dataset.page); });
             document.getElementById('playBtn').onclick = togglePlay;
-            audio.onended = () => {
-                isPlaying = false;
-                document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>';
-            };
             
-            // Прогресс-бар
-            audio.ontimeupdate = () => {
-                if (audio.duration) {
-                    const percent = (audio.currentTime / audio.duration) * 100;
-                    document.getElementById('progressFill').style.width = percent + '%';
-                }
-            };
-            
-            document.getElementById('progressBar').onclick = (e) => {
-                if (audio.duration) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const percent = (e.clientX - rect.left) / rect.width;
-                    audio.currentTime = percent * audio.duration;
-                }
-            };
+            audio.ontimeupdate = () => { if (audio.duration) document.getElementById('progressFill').style.width = (audio.currentTime / audio.duration * 100) + '%'; };
+            audio.onended = () => { isPlaying = false; document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>'; };
+            document.getElementById('progressBar').onclick = (e) => { if (audio.duration) { const rect = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration; } };
         }
-        
         init();
     </script>
 </body>
