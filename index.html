@@ -7,36 +7,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
             min-height: 100vh;
             color: #fff;
-            overflow-x: hidden;
         }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-50px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         .navbar {
             display: flex;
             justify-content: space-between;
@@ -46,22 +26,14 @@
             flex-wrap: wrap;
             gap: 15px;
         }
-
         .logo {
             font-size: 28px;
             font-weight: 800;
             background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
-
-        .nav-links {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
-
+        .nav-links { display: flex; gap: 30px; flex-wrap: wrap; }
         .nav-link {
             color: #fff;
             text-decoration: none;
@@ -71,12 +43,7 @@
             padding: 8px 16px;
             border-radius: 10px;
         }
-
-        .nav-link:hover, .nav-link.active {
-            background: rgba(255,255,255,0.1);
-            color: #ff6b6b;
-        }
-
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: #ff6b6b; }
         .user-info {
             display: flex;
             align-items: center;
@@ -85,9 +52,7 @@
             padding: 8px 20px;
             border-radius: 50px;
             backdrop-filter: blur(10px);
-            flex-wrap: wrap;
         }
-
         .avatar {
             width: 40px;
             height: 40px;
@@ -98,27 +63,9 @@
             justify-content: center;
             font-weight: bold;
         }
-
-        .hero {
-            text-align: center;
-            padding: 60px 0;
-            animation: fadeInUp 0.6s ease;
-        }
-
-        .hero h1 {
-            font-size: 56px;
-            margin-bottom: 20px;
-            background: linear-gradient(135deg, #fff, #ff6b6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 18px;
-            color: rgba(255,255,255,0.7);
-            margin-bottom: 30px;
-        }
-
+        .hero { text-align: center; padding: 60px 0; animation: fadeInUp 0.6s ease; }
+        .hero h1 { font-size: 56px; margin-bottom: 20px; background: linear-gradient(135deg, #fff, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 18px; color: rgba(255,255,255,0.7); margin-bottom: 30px; }
         .btn {
             padding: 12px 28px;
             border: none;
@@ -128,59 +75,26 @@
             transition: all 0.3s;
             font-size: 14px;
         }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(255,107,107,0.3);
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid #ff6b6b;
-            color: #ff6b6b;
-        }
-
-        .btn-outline:hover {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .section-title {
-            font-size: 28px;
-            margin: 40px 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
+        .btn-primary { background: linear-gradient(135deg, #ff6b6b, #ff8e8e); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255,107,107,0.3); }
+        .btn-outline { background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; }
+        .btn-outline:hover { background: #ff6b6b; color: white; }
+        .section-title { font-size: 28px; margin: 40px 0 20px; }
         .tracks-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 25px;
             margin-bottom: 40px;
         }
-
         .track-card {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 20px;
             transition: all 0.3s;
-            animation: fadeInUp 0.5s ease;
             border: 1px solid rgba(255,255,255,0.1);
         }
-
-        .track-card:hover {
-            transform: translateY(-5px);
-            background: rgba(255,255,255,0.15);
-            border-color: #ff6b6b;
-        }
-
+        .track-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.15); border-color: #ff6b6b; }
         .track-cover {
             width: 100%;
             height: 150px;
@@ -192,19 +106,8 @@
             margin-bottom: 15px;
             font-size: 48px;
         }
-
-        .track-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .track-artist {
-            font-size: 14px;
-            color: rgba(255,255,255,0.6);
-            margin-bottom: 10px;
-        }
-
+        .track-title { font-size: 18px; font-weight: 600; margin-bottom: 5px; }
+        .track-artist { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 10px; }
         .track-meta {
             display: flex;
             justify-content: space-between;
@@ -214,23 +117,14 @@
             flex-wrap: wrap;
             gap: 8px;
         }
-
         .track-status {
             padding: 4px 8px;
             border-radius: 20px;
             font-size: 10px;
         }
-
         .status-pending { background: #f39c12; }
         .status-approved { background: #27ae60; }
-        .status-rejected { background: #e74c3c; }
-
-        .track-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
+        .track-actions { display: flex; gap: 10px; margin-top: 15px; }
         .track-actions button {
             flex: 1;
             padding: 8px;
@@ -238,23 +132,21 @@
             border-radius: 10px;
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.2s;
         }
-
-        .btn-play {
-            background: #ff6b6b;
-            color: white;
+        .btn-play { background: #ff6b6b; color: white; }
+        .btn-like { background: rgba(255,255,255,0.2); color: white; }
+        .btn-like.liked { background: #ff6b6b; }
+        .moderation-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .moderation-actions button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
         }
-
-        .btn-like {
-            background: rgba(255,255,255,0.2);
-            color: white;
-        }
-
-        .btn-like.liked {
-            background: #ff6b6b;
-        }
-
+        .btn-approve { background: #27ae60; color: white; }
+        .btn-reject { background: #e74c3c; color: white; }
         .player {
             position: fixed;
             bottom: 0;
@@ -273,85 +165,15 @@
             z-index: 1000;
             flex-wrap: wrap;
         }
-
-        .player.active {
-            transform: translateY(0);
-        }
-
-        .player-info {
-            flex: 1;
-            min-width: 150px;
-        }
-
-        .player-controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .player-controls button {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .player-controls button:hover {
-            color: #ff6b6b;
-        }
-
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 5px 12px;
-            border-radius: 30px;
-        }
-
-        .volume-control i {
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        .volume-slider {
-            width: 80px;
-            height: 4px;
-            -webkit-appearance: none;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
-            background: #ff6b6b;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .progress-bar {
-            flex: 2;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-            min-width: 150px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: #ff6b6b;
-            border-radius: 2px;
-            width: 0%;
-        }
-
+        .player.active { transform: translateY(0); }
+        .player-info { flex: 1; min-width: 150px; }
+        .player-controls { display: flex; gap: 15px; align-items: center; }
+        .player-controls button { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+        .volume-control { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 30px; }
+        .volume-slider { width: 80px; height: 4px; -webkit-appearance: none; background: rgba(255,255,255,0.3); border-radius: 2px; cursor: pointer; }
+        .volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #ff6b6b; border-radius: 50%; cursor: pointer; }
+        .progress-bar { flex: 2; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; cursor: pointer; position: relative; min-width: 150px; }
+        .progress-fill { height: 100%; background: #ff6b6b; border-radius: 2px; width: 0%; }
         .modal {
             display: none;
             position: fixed;
@@ -365,11 +187,7 @@
             justify-content: center;
             align-items: center;
         }
-
-        .modal.active {
-            display: flex;
-        }
-
+        .modal.active { display: flex; }
         .modal-content {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border-radius: 30px;
@@ -377,7 +195,6 @@
             max-width: 500px;
             width: 90%;
         }
-
         .modal-content input, .modal-content select {
             width: 100%;
             padding: 12px;
@@ -387,7 +204,6 @@
             background: rgba(255,255,255,0.1);
             color: white;
         }
-
         .notification {
             position: fixed;
             bottom: 100px;
@@ -399,7 +215,6 @@
             animation: fadeInUp 0.3s ease;
             z-index: 1500;
         }
-
         .auth-modal {
             display: flex;
             position: fixed;
@@ -413,7 +228,6 @@
             justify-content: center;
             align-items: center;
         }
-
         .auth-card {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border-radius: 30px;
@@ -421,39 +235,13 @@
             width: 400px;
             text-align: center;
         }
-
-        .auth-card input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-
-        .auth-error {
-            color: #e74c3c;
-            margin-top: 10px;
-            display: none;
-        }
-
-        .moderator-badge {
-            background: #ff6b6b;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 32px; }
-            .tracks-grid { grid-template-columns: 1fr; }
-            .player { flex-direction: column; padding: 15px; }
-            .player-controls { width: 100%; justify-content: center; }
-            .progress-bar { width: 100%; }
-            .volume-control { margin-top: 5px; }
-        }
+        .auth-card input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 10px; background: rgba(255,255,255,0.1); color: white; }
+        .auth-error { color: #e74c3c; margin-top: 10px; display: none; }
+        .profile-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; text-align: center; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #ff6b6b; }
+        .stat-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 5px; }
+        @media (max-width: 768px) { .hero h1 { font-size: 32px; } .tracks-grid { grid-template-columns: 1fr; } .player { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -469,7 +257,7 @@
                 <div class="avatar" id="userAvatar">?</div>
                 <span id="userName">Гость</span>
                 <button class="btn-outline" id="authBtn" style="padding: 5px 15px;">Войти</button>
-                <button class="btn-outline" id="moderatorBtn" style="padding: 5px 15px; background: #ff6b6b; border-color: #ff6b6b; display: none;">👑 Модератор</button>
+                <button class="btn-outline" id="profileBtn" style="display: none;">👤 Профиль</button>
             </div>
         </nav>
 
@@ -507,9 +295,7 @@
             <div class="track-title" id="currentTrackTitle">Выберите трек</div>
             <div class="track-artist" id="currentTrackArtist">-</div>
         </div>
-        <div class="progress-bar" id="progressBar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
+        <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
         <div class="player-controls">
             <button id="playBtn"><i class="fas fa-play"></i></button>
             <div class="volume-control">
@@ -525,21 +311,28 @@
             <h2>⬆️ Загрузить трек</h2>
             <input type="text" id="trackTitle" placeholder="Название трека">
             <input type="text" id="trackArtist" placeholder="Исполнитель">
-            <select id="trackGenre">
-                <option>Рок</option><option>Поп</option><option>Хип-хоп</option>
-                <option>Электроника</option><option>Джаз</option><option>Классика</option>
-            </select>
-            <input type="file" id="trackFile" accept="audio/*">
+            <select id="trackGenre"><option>Рок</option><option>Поп</option><option>Хип-хоп</option><option>Электроника</option><option>Джаз</option></select>
             <button class="btn btn-primary" id="submitUpload">Загрузить</button>
             <button class="btn-outline" id="closeModal">Отмена</button>
         </div>
     </div>
 
-    <div class="modal" id="moderatorModal">
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <h2>👤 Профиль</h2>
+            <div id="profileInfo"></div>
+            <div class="profile-stats" id="profileStats"></div>
+            <button class="btn btn-primary" id="becomeModeratorBtn" style="margin-top: 15px;">👑 Продолжить как модератор</button>
+            <button class="btn-outline" id="logoutBtn" style="margin-top: 10px;">🚪 Выйти из аккаунта</button>
+            <button class="btn-outline" id="closeProfileModal" style="margin-top: 10px;">Закрыть</button>
+        </div>
+    </div>
+
+    <div class="modal" id="moderatorPasswordModal">
         <div class="modal-content">
             <h2>👑 Вход в режим модератора</h2>
             <input type="password" id="moderatorPassword" placeholder="Пароль модератора">
-            <button class="btn btn-primary" id="enterModerator">Войти</button>
+            <button class="btn btn-primary" id="confirmModerator">Войти</button>
             <button class="btn-outline" id="closeModeratorModal">Отмена</button>
             <div id="moderatorError" style="color: #e74c3c; margin-top: 10px; display: none;">Неверный пароль!</div>
         </div>
@@ -590,12 +383,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('plustrack_web_data', JSON.stringify({ 
-                tracks, 
-                currentUser,
-                likedTracks: Array.from(likedTracks),
-                playedTracks: Array.from(playedTracks)
-            }));
+            localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks, currentUser, likedTracks: Array.from(likedTracks), playedTracks: Array.from(playedTracks) }));
         }
 
         function showNotification(message, type) {
@@ -609,57 +397,30 @@
 
         function playTrack(track) {
             if (!track) return;
-            if (track.status !== 'approved') {
-                showNotification('Этот трек недоступен для прослушивания', 'error');
-                return;
-            }
-            
+            if (track.status !== 'approved') { showNotification('Этот трек недоступен для прослушивания', 'error'); return; }
             document.getElementById('currentTrackTitle').textContent = track.title;
             document.getElementById('currentTrackArtist').textContent = track.artist;
             document.getElementById('player').classList.add('active');
             currentTrackId = track.id;
-            
-            if (!playedTracks.has(track.id)) {
-                track.plays = (track.plays || 0) + 1;
-                playedTracks.add(track.id);
-                saveData();
-            }
-            
+            if (!playedTracks.has(track.id)) { track.plays = (track.plays || 0) + 1; playedTracks.add(track.id); saveData(); }
             showNotification(`🎵 Сейчас играет: ${track.title} - ${track.artist}`, 'info');
             renderAll();
         }
 
         function togglePlay() {
-            if (isPlaying) {
-                audio.pause();
-                document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>';
-            } else {
-                audio.play();
-                document.getElementById('playBtn').innerHTML = '<i class="fas fa-pause"></i>';
-            }
+            if (isPlaying) { audio.pause(); document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>'; }
+            else { audio.play(); document.getElementById('playBtn').innerHTML = '<i class="fas fa-pause"></i>'; }
             isPlaying = !isPlaying;
         }
 
-        function setVolume(value) {
-            const vol = Math.max(0, Math.min(100, value));
-            audio.volume = vol / 100;
-            document.getElementById('volumeSlider').value = vol;
-        }
+        function setVolume(value) { const vol = Math.max(0, Math.min(100, value)); audio.volume = vol / 100; document.getElementById('volumeSlider').value = vol; }
 
         function likeTrack(trackId) {
             const track = tracks.find(t => t.id === trackId);
             if (!track) return;
-            if (!currentUser) {
-                showNotification('Войдите в аккаунт, чтобы ставить лайки', 'error');
-                return;
-            }
-            
+            if (!currentUser) { showNotification('Войдите в аккаунт, чтобы ставить лайки', 'error'); return; }
             const likeKey = `${currentUser.username}_${trackId}`;
-            if (likedTracks.has(likeKey)) {
-                showNotification('Вы уже поставили лайк этому треку', 'error');
-                return;
-            }
-            
+            if (likedTracks.has(likeKey)) { showNotification('Вы уже поставили лайк этому треку', 'error'); return; }
             track.likes = (track.likes || 0) + 1;
             likedTracks.add(likeKey);
             saveData();
@@ -667,22 +428,9 @@
             showNotification(`❤️ Лайк треку "${track.title}"!`, 'success');
         }
 
-        function uploadTrack(title, artist, genre, file) {
-            if (!currentUser) {
-                showNotification('Войдите в аккаунт для загрузки треков', 'error');
-                return false;
-            }
-            const newTrack = {
-                id: Date.now().toString(),
-                title: title,
-                artist: artist,
-                genre: genre,
-                userId: currentUser.username,
-                status: 'pending',
-                likes: 0,
-                plays: 0,
-                uploadDate: new Date().toISOString()
-            };
+        function uploadTrack(title, artist, genre) {
+            if (!currentUser) { showNotification('Войдите в аккаунт для загрузки треков', 'error'); return false; }
+            const newTrack = { id: Date.now().toString(), title, artist, genre, userId: currentUser.username, status: 'pending', likes: 0, plays: 0, uploadDate: new Date().toISOString() };
             tracks.push(newTrack);
             saveData();
             renderAll();
@@ -692,41 +440,19 @@
 
         function approveTrack(trackId) {
             const track = tracks.find(t => t.id === trackId);
-            if (track) {
-                track.status = 'approved';
-                saveData();
-                renderAll();
-                showNotification(`✅ Трек "${track.title}" одобрен!`, 'success');
-            }
+            if (track) { track.status = 'approved'; saveData(); renderAll(); showNotification(`✅ Трек "${track.title}" одобрен!`, 'success'); }
         }
 
         function rejectTrack(trackId) {
             const track = tracks.find(t => t.id === trackId);
-            if (track) {
-                track.status = 'rejected';
-                saveData();
-                renderAll();
-                showNotification(`❌ Трек "${track.title}" отклонен`, 'error');
-            }
+            if (track) { track.status = 'rejected'; saveData(); renderAll(); showNotification(`❌ Трек "${track.title}" отклонен`, 'error'); }
         }
 
-        function hasUserLiked(trackId) {
-            if (!currentUser) return false;
-            return likedTracks.has(`${currentUser.username}_${trackId}`);
-        }
-
-        function hasUserPlayed(trackId) {
-            return playedTracks.has(trackId);
-        }
-
-        function renderTracks(tracksList, container, showActions = true, isModeration = false) {
+        function renderTracks(tracksList, container, showActions = true, isModerationView = false) {
             if (!container) return;
-            if (tracksList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:50px;color:rgba(255,255,255,0.5);">🎵 Нет треков</div>';
-                return;
-            }
+            if (tracksList.length === 0) { container.innerHTML = '<div style="text-align:center;padding:50px;color:rgba(255,255,255,0.5);">🎵 Нет треков</div>'; return; }
             container.innerHTML = tracksList.map(track => {
-                const userLiked = hasUserLiked(track.id);
+                const userLiked = currentUser ? likedTracks.has(`${currentUser.username}_${track.id}`) : false;
                 const isOwnTrack = currentUser && track.userId === currentUser.username;
                 return `
                 <div class="track-card">
@@ -737,19 +463,18 @@
                         <span>🎭 ${escapeHtml(track.genre)}</span>
                         <span>❤️ ${track.likes || 0}</span>
                         <span>▶️ ${track.plays || 0}</span>
-                        ${track.status !== 'approved' && !isModeration ? `<span class="track-status status-${track.status}">${track.status === 'pending' ? '⏳ на модерации' : '❌ отклонен'}</span>` : ''}
-                        ${isOwnTrack && track.status === 'pending' && !isModeration ? `<span class="track-status status-pending">⏳ ожидает модерации</span>` : ''}
+                        ${track.status !== 'approved' && !isModerationView ? `<span class="track-status status-pending">⏳ на модерации</span>` : ''}
                     </div>
                     ${showActions && track.status === 'approved' ? `
                         <div class="track-actions">
                             <button class="btn-play" onclick="playTrackById('${track.id}')">▶ Прослушать</button>
-                            <button class="btn-like ${userLiked ? 'liked' : ''}" onclick="likeTrackById('${track.id}')">${userLiked ? '❤️ Лайк' : '🤍 Лайк'}</button>
+                            <button class="btn-like ${userLiked ? 'liked' : ''}" onclick="likeTrackById('${track.id}')">${userLiked ? '❤️' : '🤍'} Лайк</button>
                         </div>
                     ` : ''}
-                    ${isModeration && track.status === 'pending' ? `
-                        <div class="track-actions">
-                            <button class="btn-play" style="background:#27ae60;" onclick="approveTrackById('${track.id}')">✅ Одобрить</button>
-                            <button class="btn-play" style="background:#e74c3c;" onclick="rejectTrackById('${track.id}')">❌ Отклонить</button>
+                    ${isModerationView && track.status === 'pending' && isModerator ? `
+                        <div class="moderation-actions">
+                            <button class="btn-approve" onclick="approveTrackById('${track.id}')">✅ Одобрить</button>
+                            <button class="btn-reject" onclick="rejectTrackById('${track.id}')">❌ Отклонить</button>
                         </div>
                     ` : ''}
                 </div>
@@ -761,24 +486,37 @@
             renderTracks(approved.slice(0, 4), document.getElementById('recommendationsGrid'), true);
             const popular = [...approved].sort((a,b) => (b.plays||0) - (a.plays||0)).slice(0, 4);
             renderTracks(popular, document.getElementById('popularGrid'), true);
-            
             if (currentUser) {
                 const myTracks = tracks.filter(t => t.userId === currentUser.username);
                 renderTracks(myTracks, document.getElementById('myTracksGrid'), true);
-            } else {
-                document.getElementById('myTracksGrid').innerHTML = '<div style="text-align:center;padding:50px;">Войдите в аккаунт, чтобы видеть свои треки</div>';
-            }
-            
+            } else { document.getElementById('myTracksGrid').innerHTML = '<div style="text-align:center;padding:50px;">Войдите в аккаунт, чтобы видеть свои треки</div>'; }
             if (isModerator) {
                 const pending = tracks.filter(t => t.status === 'pending');
                 renderTracks(pending, document.getElementById('moderationGrid'), false, true);
+                document.getElementById('moderationTab').style.display = 'inline-block';
             } else {
-                document.getElementById('moderationGrid').innerHTML = '<div style="text-align:center;padding:50px;">Войдите как модератор для доступа</div>';
+                document.getElementById('moderationGrid').innerHTML = '<div style="text-align:center;padding:50px;">Доступно только модераторам</div>';
+                document.getElementById('moderationTab').style.display = 'none';
             }
         }
 
-        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { return m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'; }); }
+        function showProfileModal() {
+            if (!currentUser) return;
+            const myTracks = tracks.filter(t => t.userId === currentUser.username);
+            const totalLikes = myTracks.reduce((sum, t) => sum + (t.likes || 0), 0);
+            const totalPlays = myTracks.reduce((sum, t) => sum + (t.plays || 0), 0);
+            const pendingCount = myTracks.filter(t => t.status === 'pending').length;
+            document.getElementById('profileInfo').innerHTML = `<div style="text-align:center;"><div class="avatar" style="width:80px;height:80px;font-size:32px;margin:0 auto 15px;">${currentUser.username[0].toUpperCase()}</div><h3>${escapeHtml(currentUser.username)}</h3></div>`;
+            document.getElementById('profileStats').innerHTML = `
+                <div class="stat-box"><div class="stat-number">${myTracks.length}</div><div class="stat-label">Треков загружено</div></div>
+                <div class="stat-box"><div class="stat-number">${totalLikes}</div><div class="stat-label">Всего лайков</div></div>
+                <div class="stat-box"><div class="stat-number">${totalPlays}</div><div class="stat-label">Всего прослушиваний</div></div>
+                <div class="stat-box"><div class="stat-number">${pendingCount}</div><div class="stat-label">На модерации</div></div>
+            `;
+            document.getElementById('profileModal').style.display = 'flex';
+        }
 
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
         window.playTrackById = (id) => { const track = tracks.find(t => t.id === id); if (track) playTrack(track); };
         window.likeTrackById = (id) => likeTrack(id);
         window.approveTrackById = (id) => approveTrack(id);
@@ -797,23 +535,13 @@
                 document.getElementById('userName').textContent = currentUser.username;
                 document.getElementById('userAvatar').textContent = currentUser.username[0].toUpperCase();
                 document.getElementById('authBtn').textContent = 'Выйти';
-                document.getElementById('moderatorBtn').style.display = 'inline-block';
+                document.getElementById('profileBtn').style.display = 'inline-block';
             } else {
                 document.getElementById('userName').textContent = 'Гость';
                 document.getElementById('userAvatar').textContent = '?';
                 document.getElementById('authBtn').textContent = 'Войти';
-                document.getElementById('moderatorBtn').style.display = 'none';
+                document.getElementById('profileBtn').style.display = 'none';
                 isModerator = false;
-                document.getElementById('moderationTab').style.display = 'none';
-            }
-            if (isModerator) {
-                document.getElementById('moderationTab').style.display = 'inline-block';
-                document.getElementById('moderatorBtn').style.background = '#27ae60';
-                document.getElementById('moderatorBtn').innerHTML = '👑 Модератор';
-            } else {
-                document.getElementById('moderationTab').style.display = 'none';
-                document.getElementById('moderatorBtn').style.background = '#ff6b6b';
-                document.getElementById('moderatorBtn').innerHTML = '👑 Модератор';
             }
         }
 
@@ -821,57 +549,35 @@
             loadData();
             updateUserUI();
             renderAll();
-            
             const volumeSlider = document.getElementById('volumeSlider');
             volumeSlider.addEventListener('input', (e) => setVolume(e.target.value));
             document.getElementById('volumeDown').onclick = () => setVolume(audio.volume * 100 - 10);
             document.getElementById('volumeUp').onclick = () => setVolume(audio.volume * 100 + 10);
             setVolume(70);
-            
             document.getElementById('authBtn').onclick = () => {
-                if (currentUser) { 
-                    currentUser = null; 
-                    likedTracks.clear();
-                    playedTracks.clear();
-                    saveData(); 
-                    updateUserUI(); 
-                    renderAll(); 
-                    showNotification('Вы вышли из аккаунта', 'info'); 
-                } else document.getElementById('authModal').style.display = 'flex';
+                if (currentUser) { currentUser = null; isModerator = false; likedTracks.clear(); playedTracks.clear(); saveData(); updateUserUI(); renderAll(); showNotification('Вы вышли из аккаунта', 'info'); }
+                else document.getElementById('authModal').style.display = 'flex';
             };
-            document.getElementById('moderatorBtn').onclick = () => { document.getElementById('moderatorModal').style.display = 'flex'; };
-            document.getElementById('enterModerator').onclick = () => {
+            document.getElementById('profileBtn').onclick = () => showProfileModal();
+            document.getElementById('becomeModeratorBtn').onclick = () => { document.getElementById('profileModal').style.display = 'none'; document.getElementById('moderatorPasswordModal').style.display = 'flex'; };
+            document.getElementById('logoutBtn').onclick = () => { currentUser = null; isModerator = false; likedTracks.clear(); playedTracks.clear(); saveData(); updateUserUI(); renderAll(); document.getElementById('profileModal').style.display = 'none'; showNotification('Вы вышли из аккаунта', 'info'); };
+            document.getElementById('closeProfileModal').onclick = () => document.getElementById('profileModal').style.display = 'none';
+            document.getElementById('confirmModerator').onclick = () => {
                 const pwd = document.getElementById('moderatorPassword').value;
-                if (pwd === '060510') { isModerator = true; updateUserUI(); renderAll(); document.getElementById('moderatorModal').style.display = 'none'; showNotification('Вы вошли как модератор!', 'success'); }
+                if (pwd === '060510') { isModerator = true; updateUserUI(); renderAll(); document.getElementById('moderatorPasswordModal').style.display = 'none'; showNotification('Вы вошли как модератор!', 'success'); }
                 else document.getElementById('moderatorError').style.display = 'block';
             };
-            document.getElementById('closeModeratorModal').onclick = () => { document.getElementById('moderatorModal').style.display = 'none'; document.getElementById('moderatorError').style.display = 'none'; };
-            
+            document.getElementById('closeModeratorModal').onclick = () => { document.getElementById('moderatorPasswordModal').style.display = 'none'; document.getElementById('moderatorError').style.display = 'none'; };
             document.getElementById('doLogin').onclick = () => {
                 const username = document.getElementById('loginUsername').value;
                 const password = document.getElementById('loginPassword').value;
-                if (username && password) {
-                    currentUser = { username: username, role: 'user' };
-                    saveData();
-                    updateUserUI();
-                    document.getElementById('authModal').style.display = 'none';
-                    renderAll();
-                    showNotification(`Добро пожаловать, ${username}!`, 'success');
-                }
+                if (username && password) { currentUser = { username, role: 'user' }; saveData(); updateUserUI(); document.getElementById('authModal').style.display = 'none'; renderAll(); showNotification(`Добро пожаловать, ${username}!`, 'success'); }
             };
             document.getElementById('doRegister').onclick = () => {
                 const username = document.getElementById('regUsername').value;
                 const password = document.getElementById('regPassword').value;
-                if (username && password) {
-                    currentUser = { username: username, role: 'user' };
-                    saveData();
-                    updateUserUI();
-                    document.getElementById('authModal').style.display = 'none';
-                    renderAll();
-                    showNotification(`Аккаунт ${username} создан!`, 'success');
-                }
+                if (username && password) { currentUser = { username, role: 'user' }; saveData(); updateUserUI(); document.getElementById('authModal').style.display = 'none'; renderAll(); showNotification(`Аккаунт ${username} создан!`, 'success'); }
             };
-            
             document.getElementById('uploadBtn').onclick = () => { if (currentUser) document.getElementById('uploadModal').style.display = 'flex'; else showNotification('Войдите в аккаунт', 'error'); };
             document.getElementById('myUploadBtn').onclick = () => { if (currentUser) document.getElementById('uploadModal').style.display = 'flex'; else showNotification('Войдите в аккаунт', 'error'); };
             document.getElementById('submitUpload').onclick = () => {
@@ -879,17 +585,14 @@
                 const artist = document.getElementById('trackArtist').value;
                 const genre = document.getElementById('trackGenre').value;
                 if (!title || !artist) { showNotification('Заполните название и исполнителя', 'error'); return; }
-                uploadTrack(title, artist, genre, null);
+                uploadTrack(title, artist, genre);
                 document.getElementById('uploadModal').style.display = 'none';
                 document.getElementById('trackTitle').value = '';
                 document.getElementById('trackArtist').value = '';
-                document.getElementById('trackFile').value = '';
             };
-            document.getElementById('closeModal').onclick = () => { document.getElementById('uploadModal').style.display = 'none'; };
-            
+            document.getElementById('closeModal').onclick = () => document.getElementById('uploadModal').style.display = 'none';
             document.querySelectorAll('.nav-link').forEach(link => { link.onclick = () => showPage(link.dataset.page); });
             document.getElementById('playBtn').onclick = togglePlay;
-            
             audio.ontimeupdate = () => { if (audio.duration) document.getElementById('progressFill').style.width = (audio.currentTime / audio.duration * 100) + '%'; };
             audio.onended = () => { isPlaying = false; document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>'; };
             document.getElementById('progressBar').onclick = (e) => { if (audio.duration) { const rect = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration; } };
