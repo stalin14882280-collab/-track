@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>+Track — музыкальная платформа с модерацией</title>
+    <title>+Track — музыкальная платформа</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -227,6 +227,26 @@
         .stat-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; text-align: center; }
         .stat-number { font-size: 32px; font-weight: bold; color: #ff6b6b; }
         .stat-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 5px; }
+        .my-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 10px;
+        }
+        .my-tab {
+            padding: 8px 20px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: 0.2s;
+        }
+        .my-tab.active {
+            background: #ff6b6b;
+            color: white;
+        }
+        .my-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.1);
+        }
         @media (max-width: 768px) {
             .hero h1 { font-size: 32px; }
             .tracks-grid { grid-template-columns: 1fr; }
@@ -268,7 +288,12 @@
             <h1>🎸 Мои треки</h1>
             <button class="btn btn-primary" id="myUploadBtn">⬆️ Загрузить новый трек</button>
         </div>
-        <div class="tracks-grid" id="myTracksGrid"></div>
+        <div class="my-tabs">
+            <div class="my-tab active" data-tab="all">📀 Все мои треки</div>
+            <div class="my-tab" data-tab="pending">⏳ На модерации</div>
+            <div class="my-tab" data-tab="liked">❤️ Понравилось</div>
+        </div>
+        <div id="myTracksContainer"></div>
     </div>
 
     <div id="moderationPage" style="display: none;">
@@ -351,6 +376,10 @@
 </div>
 
 <script>
+    // ==================== НАСТРОЙКИ TELEGRAM ====================
+    // ВСТАВЬТЕ СВОИ ДАННЫЕ:
+    const BOT_TOKEN = "8592255344:AAHWCSqPicVWz6iVXZF8bixzv8QyDB1hSAU";  // ВАШ ТОКЕН ОТ БОТА
+    const ADMIN_ID = 7643293829;              // ВАШ TELEGRAM ID
     
     // ==================== ГЛОБАЛЬНЫЕ ДАННЫЕ ====================
     let currentUser = null;
@@ -363,104 +392,66 @@
     let playedTracks = new Set();
     let audioBlobUrls = new Map();
     let coverBlobUrls = new Map();
+    let currentMyTab = "all";
     
-    // ==================== РАБОТА С GITHUB ====================
-    async function loadTracksFromGitHub() {
+    // ==================== РАБОТА С TELEGRAM ====================
+    async function loadFromTelegram() {
         try {
-            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
-            const response = await fetch(url, {
-                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-            });
-            if (!response.ok) throw new Error('Не удалось загрузить');
+            showNotification('Синхронизация с Telegram...', 'info');
+            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=-1`);
             const data = await response.json();
-            const content = atob(data.content);
-            const jsonData = JSON.parse(content);
-            tracks = jsonData.tracks || [];
-            // восстановить blob ссылки для файлов
-            for (let track of tracks) {
-                if (track.fileData) {
-                    const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
-                    const url = URL.createObjectURL(blob);
-                    audioBlobUrls.set(track.id, url);
-                    track.fileBlobUrl = url;
-                }
-                if (track.coverData) {
-                    const blob = new Blob([new Uint8Array(track.coverData)], { type: 'image/jpeg' });
-                    const url = URL.createObjectURL(blob);
-                    coverBlobUrls.set(track.id, url);
-                    track.coverUrl = url;
+            
+            if (data.ok && data.result && data.result.length > 0) {
+                const lastMessage = data.result[data.result.length - 1];
+                if (lastMessage.message && lastMessage.message.text) {
+                    const text = lastMessage.message.text;
+                    if (text.startsWith('DATA:')) {
+                        const jsonData = JSON.parse(text.substring(5));
+                        tracks = jsonData.tracks || [];
+                        likedTracks = new Set(jsonData.likedTracks || []);
+                        playedTracks = new Set(jsonData.playedTracks || []);
+                        showNotification('Данные загружены из Telegram', 'success');
+                        renderAll();
+                        return;
+                    }
                 }
             }
-            showNotification('Данные загружены из GitHub', 'success');
-            renderAll();
+            // Если нет данных в Telegram, загружаем локальные
+            loadLocalData();
         } catch (e) {
-            console.error('Ошибка загрузки из GitHub:', e);
-            showNotification('Ошибка загрузки данных, используется локальное хранилище', 'error');
-            // fallback на localStorage
-            const saved = localStorage.getItem('plustrack_web_data');
-            if (saved) {
-                const data = JSON.parse(saved);
-                tracks = data.tracks || [];
-            }
-            renderAll();
+            console.error('Ошибка загрузки из Telegram:', e);
+            loadLocalData();
         }
     }
     
-    async function saveTracksToGitHub() {
+    async function saveToTelegram() {
         try {
-            // получаем текущий файл (нужен SHA)
-            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
-            let sha = null;
-            try {
-                const getResponse = await fetch(url, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                });
-                if (getResponse.ok) {
-                    const fileData = await getResponse.json();
-                    sha = fileData.sha;
-                }
-            } catch(e) {}
-            
-            // подготавливаем данные для сохранения
-            const tracksToSave = tracks.map(t => {
-                const { fileBlobUrl, coverUrl, ...rest } = t;
-                return rest;
-            });
-            const content = btoa(unescape(encodeURIComponent(JSON.stringify({ tracks: tracksToSave }, null, 2))));
-            
-            const body = {
-                message: `Обновление треков ${new Date().toLocaleString()}`,
-                content: content,
-                branch: "main"
+            const dataToSave = {
+                tracks: tracks.map(t => {
+                    const { fileBlobUrl, coverUrl, ...rest } = t;
+                    return rest;
+                }),
+                likedTracks: Array.from(likedTracks),
+                playedTracks: Array.from(playedTracks)
             };
-            if (sha) body.sha = sha;
+            const message = `DATA:${JSON.stringify(dataToSave)}`;
             
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: ADMIN_ID,
+                    text: message
+                })
             });
-            if (response.ok) {
-                showNotification('Данные сохранены в GitHub', 'success');
-            } else {
-                throw new Error('Ошибка сохранения');
-            }
-        } catch(e) {
-            console.error('Ошибка сохранения в GitHub:', e);
-            showNotification('Не удалось сохранить в GitHub, данные сохранены локально', 'error');
-            // fallback на localStorage
-            const tracksToSave = tracks.map(t => {
-                const { fileBlobUrl, coverUrl, ...rest } = t;
-                return rest;
-            });
-            localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks: tracksToSave, currentUser, likedTracks: Array.from(likedTracks), playedTracks: Array.from(playedTracks) }));
+            console.log('Сохранено в Telegram');
+        } catch (e) {
+            console.error('Ошибка сохранения в Telegram:', e);
         }
+        saveLocalData();
     }
     
-    // ==================== ЗАГРУЗКА / СОХРАНЕНИЕ (локальный fallback) ====================
+    // ==================== ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ====================
     function loadLocalData() {
         const saved = localStorage.getItem('plustrack_web_data');
         if (saved) {
@@ -473,8 +464,7 @@
             tracks = [
                 { id: "1", title: "Ночь", artist: "Улица Восток", genre: "Рок", userId: "admin", status: "approved", likes: 15, plays: 128 },
                 { id: "2", title: "Рассвет", artist: "Елена Солнцева", genre: "Поп", userId: "admin", status: "approved", likes: 23, plays: 245 },
-                { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567 },
-                { id: "demo", title: "Тестовый трек", artist: "Новый артист", genre: "Поп", userId: "user", status: "pending", likes: 0, plays: 0 }
+                { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567 }
             ];
         }
         for (let track of tracks) {
@@ -491,6 +481,7 @@
                 track.coverUrl = url;
             }
         }
+        renderAll();
     }
     
     function saveLocalData() {
@@ -498,7 +489,12 @@
             const { fileBlobUrl, coverUrl, ...rest } = t;
             return rest;
         });
-        localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks: tracksToSave, currentUser, likedTracks: Array.from(likedTracks), playedTracks: Array.from(playedTracks) }));
+        localStorage.setItem('plustrack_web_data', JSON.stringify({
+            tracks: tracksToSave,
+            currentUser,
+            likedTracks: Array.from(likedTracks),
+            playedTracks: Array.from(playedTracks)
+        }));
     }
     
     function showNotification(msg, type) {
@@ -546,7 +542,7 @@
             track.plays = (track.plays || 0) + 1;
             playedTracks.add(track.id);
             saveLocalData();
-            saveTracksToGitHub();
+            saveToTelegram();
             renderAll();
         }
     }
@@ -589,7 +585,7 @@
         track.likes = (track.likes || 0) + 1;
         likedTracks.add(key);
         saveLocalData();
-        saveTracksToGitHub();
+        saveToTelegram();
         renderAll();
         showNotification(`❤️ Лайк треку "${track.title}"!`, 'success');
     }
@@ -613,7 +609,7 @@
             }
             tracks = tracks.filter(t => t.id !== trackId);
             saveLocalData();
-            saveTracksToGitHub();
+            saveToTelegram();
             renderAll();
             showNotification(`🗑️ Трек "${track.title}" удален`, 'info');
             if (currentTrackId === trackId) {
@@ -665,7 +661,7 @@
                 }
                 tracks.push(newTrack);
                 saveLocalData();
-                saveTracksToGitHub();
+                saveToTelegram();
                 renderAll();
                 showNotification(`📤 Трек "${title}" отправлен на модерацию!`, 'success');
             };
@@ -689,7 +685,7 @@
         if (track) {
             track.status = 'approved';
             saveLocalData();
-            saveTracksToGitHub();
+            saveToTelegram();
             renderAll();
             showNotification(`✅ Трек "${track.title}" одобрен!`, 'success');
         }
@@ -700,7 +696,7 @@
         if (track) {
             track.status = 'rejected';
             saveLocalData();
-            saveTracksToGitHub();
+            saveToTelegram();
             renderAll();
             showNotification(`❌ Трек "${track.title}" отклонен`, 'error');
         }
@@ -747,17 +743,35 @@
         }).join('');
     }
     
+    function renderMyTracks() {
+        if (!currentUser) {
+            document.getElementById('myTracksContainer').innerHTML = '<div style="text-align:center;padding:50px;">Войдите в аккаунт, чтобы видеть свои треки</div>';
+            return;
+        }
+        
+        let tracksToShow = [];
+        if (currentMyTab === 'all') {
+            tracksToShow = tracks.filter(t => t.userId === currentUser.username);
+        } else if (currentMyTab === 'pending') {
+            tracksToShow = tracks.filter(t => t.userId === currentUser.username && t.status === 'pending');
+        } else if (currentMyTab === 'liked') {
+            const likedTrackIds = Array.from(likedTracks)
+                .filter(key => key.startsWith(`${currentUser.username}_`))
+                .map(key => key.split('_')[1]);
+            tracksToShow = tracks.filter(t => likedTrackIds.includes(t.id));
+        }
+        
+        const container = document.getElementById('myTracksContainer');
+        renderTracks(tracksToShow, container, true);
+    }
+    
     function renderAll() {
         const approved = tracks.filter(t => t.status === 'approved');
         renderTracks(approved.slice(0, 4), document.getElementById('recommendationsGrid'), true);
         const popular = [...approved].sort((a,b) => (b.plays||0) - (a.plays||0)).slice(0, 4);
         renderTracks(popular, document.getElementById('popularGrid'), true);
-        if (currentUser) {
-            const myTracks = tracks.filter(t => t.userId === currentUser.username);
-            renderTracks(myTracks, document.getElementById('myTracksGrid'), true);
-        } else {
-            document.getElementById('myTracksGrid').innerHTML = '<div style="text-align:center;padding:50px;">Войдите в аккаунт, чтобы видеть свои треки</div>';
-        }
+        renderMyTracks();
+        
         if (isModerator) {
             const pending = tracks.filter(t => t.status === 'pending');
             renderTracks(pending, document.getElementById('moderationGrid'), false, true);
@@ -770,14 +784,12 @@
     
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
     
-    // глобальные вызовы для onclick
     window.playTrackById = (id) => { const track = tracks.find(t => t.id === id); if (track) playTrack(track); };
     window.likeTrackById = (id) => likeTrack(id);
     window.approveTrackById = (id) => approveTrack(id);
     window.rejectTrackById = (id) => rejectTrack(id);
     window.deleteTrackById = (id) => deleteTrack(id);
     
-    // ==================== НАВИГАЦИЯ ====================
     function showPage(page) {
         document.getElementById('homePage').style.display = page === 'home' ? 'block' : 'none';
         document.getElementById('myTracksPage').style.display = page === 'my-tracks' ? 'block' : 'none';
@@ -817,17 +829,25 @@
         document.getElementById('profileModal').style.display = 'flex';
     }
     
-    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
     async function init() {
-        // пробуем загрузить из GitHub, если не получается — локально
-        if (GITHUB_TOKEN && GITHUB_TOKEN !== "ghp_ВАШ_ТОКЕН_ЗДЕСЬ") {
-            await loadTracksFromGitHub();
+        if (BOT_TOKEN && BOT_TOKEN !== "8592255344:AAHW..." && ADMIN_ID) {
+            await loadFromTelegram();
         } else {
             loadLocalData();
-            showNotification('GitHub не настроен, данные хранятся локально', 'info');
+            showNotification('Telegram бот не настроен, данные локально', 'info');
         }
         updateUserUI();
         renderAll();
+        
+        // Табы в Мои треки
+        document.querySelectorAll('.my-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.my-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentMyTab = tab.dataset.tab;
+                renderMyTracks();
+            };
+        });
         
         const volumeSlider = document.getElementById('volumeSlider');
         volumeSlider.addEventListener('input', (e) => setVolume(e.target.value));
@@ -842,6 +862,7 @@
                 likedTracks.clear();
                 playedTracks.clear();
                 saveLocalData();
+                saveToTelegram();
                 updateUserUI();
                 renderAll();
                 showNotification('Вы вышли из аккаунта', 'info');
@@ -860,6 +881,7 @@
             likedTracks.clear();
             playedTracks.clear();
             saveLocalData();
+            saveToTelegram();
             updateUserUI();
             renderAll();
             document.getElementById('profileModal').style.display = 'none';
@@ -888,6 +910,7 @@
             if (user && pass) {
                 currentUser = { username: user };
                 saveLocalData();
+                saveToTelegram();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
@@ -902,6 +925,7 @@
             if (user && pass) {
                 currentUser = { username: user };
                 saveLocalData();
+                saveToTelegram();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
