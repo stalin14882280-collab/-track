@@ -6,6 +6,8 @@
     <title>+Track — музыкальная платформа</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -384,11 +386,23 @@
 </div>
 
 <script>
-    // ==================== НАСТРОЙКИ GOOGLE DRIVE ====================
-    // ВАШИ ДАННЫЕ:
-    const GOOGLE_API_KEY = "AlzaSyBOaZx-q_eNKql_aJJQtxYw5W0qtcSd7H4";
-    const FOLDER_ID = "1Llj6XjOLhGA7hFVXEpZtN5TnkmrMc7sJ";
-    const FILE_NAME = "plustrack_data.json";
+    // ==================== НАСТРОЙКИ FIREBASE ====================
+    // ВАШ КОНФИГ ИЗ FIREBASE (вставлен автоматически)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDjsmFwHhYEcDY87q4pBWXpMGURS2dHI",
+        authDomain: "plustrack-music.firebaseapp.com",
+        databaseURL: "https://plustrack-music-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "plustrack-music",
+        storageBucket: "plustrack-music.default.bucket",
+        messagingSenderId: "317257299254",
+        appId: "1:317257299254:web:79a0446e06c5c2b94fd2f97",
+        measurementId: "G-624NZEBCT8"
+    };
+    
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const dbRef = database.ref('plustrack');
     
     // ==================== ГЛОБАЛЬНЫЕ ДАННЫЕ ====================
     let currentUser = null;
@@ -402,92 +416,26 @@
     let audioBlobUrls = new Map();
     let coverBlobUrls = new Map();
     let currentMyTab = "all";
-    let syncTimer = null;
+    let isLoading = false;
     
-    // ==================== СИНХРОНИЗАЦИЯ С GOOGLE DRIVE ====================
-    async function getFileId() {
+    // ==================== СИНХРОНИЗАЦИЯ С FIREBASE ====================
+    async function loadFromFirebase() {
+        if (isLoading) return;
+        isLoading = true;
+        document.getElementById('syncStatus').innerHTML = '☁️ загрузка...';
+        showNotification('Синхронизация с облаком...', 'info');
+        
         try {
-            const url = `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}' and '${FOLDER_ID}' in parents&key=${GOOGLE_API_KEY}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            if (data.files && data.files.length > 0) {
-                return data.files[0].id;
-            }
-            return null;
-        } catch (e) {
-            console.error('Ошибка поиска файла:', e);
-            return null;
-        }
-    }
-    
-    async function saveToDrive(data) {
-        try {
-            const fileContent = JSON.stringify(data, null, 2);
-            const blob = new Blob([fileContent], { type: 'application/json' });
-            const existingFileId = await getFileId();
+            const snapshot = await dbRef.once('value');
+            const data = snapshot.val();
             
-            let url, method, body;
-            if (existingFileId) {
-                // Обновляем существующий файл
-                url = `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=media&key=${GOOGLE_API_KEY}`;
-                method = 'PATCH';
-                body = blob;
-            } else {
-                // Создаём новый файл
-                url = `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${GOOGLE_API_KEY}`;
-                method = 'POST';
-                const metadata = {
-                    name: FILE_NAME,
-                    parents: [FOLDER_ID],
-                    mimeType: 'application/json'
-                };
-                const formData = new FormData();
-                formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                formData.append('file', blob);
-                body = formData;
-            }
-            
-            const response = await fetch(url, {
-                method: method,
-                body: body,
-                headers: existingFileId ? { 'Content-Type': 'application/json' } : {}
-            });
-            
-            if (response.ok) {
-                document.getElementById('syncStatus').innerHTML = '☁️ сохранено';
-                setTimeout(() => {
-                    document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
-                }, 2000);
-                return true;
-            } else {
-                console.error('Ошибка сохранения:', await response.text());
-                return false;
-            }
-        } catch (e) {
-            console.error('Ошибка сохранения в Drive:', e);
-            return false;
-        }
-    }
-    
-    async function loadFromDrive() {
-        try {
-            const fileId = await getFileId();
-            if (!fileId) {
-                console.log('Файл не найден, используем локальные данные');
-                return false;
-            }
-            
-            const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${GOOGLE_API_KEY}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Ошибка загрузки');
-            const data = await response.json();
-            
-            if (data.tracks) {
-                tracks = data.tracks;
+            if (data && data.tracks) {
+                tracks = data.tracks || [];
                 if (data.likedTracks) likedTracks = new Set(data.likedTracks);
                 if (data.playedTracks) playedTracks = new Set(data.playedTracks);
+                if (data.currentUser) currentUser = data.currentUser;
                 
-                // Восстанавливаем blob-ссылки для файлов
+                // Восстанавливаем blob-ссылки
                 for (let track of tracks) {
                     if (track.fileData) {
                         const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
@@ -503,29 +451,46 @@
                     }
                 }
                 document.getElementById('syncStatus').innerHTML = '☁️ загружено';
+                showNotification(`Загружено ${tracks.length} треков из облака`, 'success');
                 setTimeout(() => {
                     document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
                 }, 2000);
-                return true;
+            } else {
+                // Нет данных в облаке — используем локальные
+                loadLocalData();
             }
-            return false;
         } catch (e) {
-            console.error('Ошибка загрузки из Drive:', e);
-            return false;
+            console.error('Ошибка загрузки из Firebase:', e);
+            showNotification('Ошибка синхронизации, использую локальные данные', 'error');
+            loadLocalData();
         }
+        
+        renderAll();
+        isLoading = false;
     }
     
-    async function syncToCloud() {
-        const dataToSave = {
-            tracks: tracks.map(t => {
+    async function saveToFirebase() {
+        try {
+            const tracksToSave = tracks.map(t => {
                 const { fileBlobUrl, coverUrl, ...rest } = t;
                 return rest;
-            }),
-            likedTracks: Array.from(likedTracks),
-            playedTracks: Array.from(playedTracks),
-            lastUpdated: new Date().toISOString()
-        };
-        await saveToDrive(dataToSave);
+            });
+            
+            await dbRef.set({
+                tracks: tracksToSave,
+                likedTracks: Array.from(likedTracks),
+                playedTracks: Array.from(playedTracks),
+                currentUser: currentUser,
+                lastUpdated: new Date().toISOString()
+            });
+            document.getElementById('syncStatus').innerHTML = '☁️ сохранено';
+            setTimeout(() => {
+                document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
+            }, 2000);
+            console.log('Сохранено в Firebase');
+        } catch (e) {
+            console.error('Ошибка сохранения в Firebase:', e);
+        }
         saveLocalData();
     }
     
@@ -619,7 +584,7 @@
             track.plays = (track.plays || 0) + 1;
             playedTracks.add(track.id);
             saveLocalData();
-            syncToCloud();
+            saveToFirebase();
             renderAll();
         }
     }
@@ -662,7 +627,7 @@
         track.likes = (track.likes || 0) + 1;
         likedTracks.add(key);
         saveLocalData();
-        syncToCloud();
+        saveToFirebase();
         renderAll();
         showNotification(`❤️ Лайк треку "${track.title}"!`, 'success');
     }
@@ -686,7 +651,7 @@
             }
             tracks = tracks.filter(t => t.id !== trackId);
             saveLocalData();
-            syncToCloud();
+            saveToFirebase();
             renderAll();
             showNotification(`🗑️ Трек "${track.title}" удален`, 'info');
             if (currentTrackId === trackId) {
@@ -738,7 +703,7 @@
                 }
                 tracks.push(newTrack);
                 saveLocalData();
-                syncToCloud();
+                saveToFirebase();
                 renderAll();
                 showNotification(`📤 Трек "${title}" отправлен на модерацию!`, 'success');
             };
@@ -762,7 +727,7 @@
         if (track) {
             track.status = 'approved';
             saveLocalData();
-            syncToCloud();
+            saveToFirebase();
             renderAll();
             showNotification(`✅ Трек "${track.title}" одобрен!`, 'success');
         }
@@ -773,7 +738,7 @@
         if (track) {
             track.status = 'rejected';
             saveLocalData();
-            syncToCloud();
+            saveToFirebase();
             renderAll();
             showNotification(`❌ Трек "${track.title}" отклонен`, 'error');
         }
@@ -907,20 +872,14 @@
     }
     
     async function init() {
-        document.getElementById('syncStatus').innerHTML = '☁️ загрузка...';
-        const loaded = await loadFromDrive();
-        if (!loaded) {
-            loadLocalData();
-            showNotification('Использую локальные данные', 'info');
-        }
-        document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
+        await loadFromFirebase();
         updateUserUI();
         renderAll();
         
-        // Автосохранение каждые 30 секунд
+        // Автосохранение каждые 15 секунд
         setInterval(() => {
-            syncToCloud();
-        }, 30000);
+            saveToFirebase();
+        }, 15000);
         
         document.querySelectorAll('.my-tab').forEach(tab => {
             tab.onclick = () => {
@@ -944,7 +903,7 @@
                 likedTracks.clear();
                 playedTracks.clear();
                 saveLocalData();
-                syncToCloud();
+                saveToFirebase();
                 updateUserUI();
                 renderAll();
                 showNotification('Вы вышли из аккаунта', 'info');
@@ -963,7 +922,7 @@
             likedTracks.clear();
             playedTracks.clear();
             saveLocalData();
-            syncToCloud();
+            saveToFirebase();
             updateUserUI();
             renderAll();
             document.getElementById('profileModal').style.display = 'none';
@@ -992,7 +951,7 @@
             if (user && pass) {
                 currentUser = { username: user };
                 saveLocalData();
-                syncToCloud();
+                saveToFirebase();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
@@ -1007,7 +966,7 @@
             if (user && pass) {
                 currentUser = { username: user };
                 saveLocalData();
-                syncToCloud();
+                saveToFirebase();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
