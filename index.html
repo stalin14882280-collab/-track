@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>+Track — музыкальная платформа</title>
+    <title>+Track — музыкальная платформа с модерацией</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -296,7 +296,6 @@
     </div>
 </div>
 
-<!-- Модалка загрузки -->
 <div class="modal" id="uploadModal">
     <div class="modal-content">
         <h2>⬆️ Загрузить трек</h2>
@@ -314,7 +313,6 @@
     </div>
 </div>
 
-<!-- Модалка профиля -->
 <div class="modal" id="profileModal">
     <div class="modal-content">
         <h2>👤 Профиль</h2>
@@ -326,7 +324,6 @@
     </div>
 </div>
 
-<!-- Модалка пароля модератора -->
 <div class="modal" id="moderatorPasswordModal">
     <div class="modal-content">
         <h2>👑 Вход в режим модератора</h2>
@@ -337,7 +334,6 @@
     </div>
 </div>
 
-<!-- Модалка входа/регистрации -->
 <div class="auth-modal" id="authModal">
     <div class="auth-card">
         <h2>🎵 +TRACK</h2>
@@ -355,20 +351,123 @@
 </div>
 
 <script>
+    // ==================== НАСТРОЙКИ GITHUB ====================
+    // ⚠️ ВСТАВЬТЕ ВАШ ТОКЕН СЮДА (получить: GitHub → Settings → Developer settings → Personal access tokens)
+    const GITHUB_TOKEN = "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";  // ЗАМЕНИТЕ НА СВОЙ ТОКЕН!
+    const REPO_OWNER = "stalin14882280-collab";
+    const REPO_NAME = "plustrack-moderation-site";
+    const FILE_PATH = "tracks.json";
+    
     // ==================== ГЛОБАЛЬНЫЕ ДАННЫЕ ====================
-    let currentUser = null;          // { username, ... }
-    let isModerator = false;         // флаг режима модератора (включён паролем 060510)
-    let tracks = [];                 // массив треков
-    let audio = new Audio();         // HTML5 Audio элемент
+    let currentUser = null;
+    let isModerator = false;
+    let tracks = [];
+    let audio = new Audio();
     let isPlaying = false;
     let currentTrackId = null;
-    let likedTracks = new Set();     // хранит строки "username_trackId"
-    let playedTracks = new Set();    // хранит trackId, которые уже получили +1 прослушивание
-    let audioBlobUrls = new Map();   // trackId -> URL для воспроизведения
-    let coverBlobUrls = new Map();   // trackId -> URL обложки
-
-    // ==================== ЗАГРУЗКА / СОХРАНЕНИЕ ====================
-    function loadData() {
+    let likedTracks = new Set();
+    let playedTracks = new Set();
+    let audioBlobUrls = new Map();
+    let coverBlobUrls = new Map();
+    
+    // ==================== РАБОТА С GITHUB ====================
+    async function loadTracksFromGitHub() {
+        try {
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+            const response = await fetch(url, {
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+            });
+            if (!response.ok) throw new Error('Не удалось загрузить');
+            const data = await response.json();
+            const content = atob(data.content);
+            const jsonData = JSON.parse(content);
+            tracks = jsonData.tracks || [];
+            // восстановить blob ссылки для файлов
+            for (let track of tracks) {
+                if (track.fileData) {
+                    const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
+                    const url = URL.createObjectURL(blob);
+                    audioBlobUrls.set(track.id, url);
+                    track.fileBlobUrl = url;
+                }
+                if (track.coverData) {
+                    const blob = new Blob([new Uint8Array(track.coverData)], { type: 'image/jpeg' });
+                    const url = URL.createObjectURL(blob);
+                    coverBlobUrls.set(track.id, url);
+                    track.coverUrl = url;
+                }
+            }
+            showNotification('Данные загружены из GitHub', 'success');
+            renderAll();
+        } catch (e) {
+            console.error('Ошибка загрузки из GitHub:', e);
+            showNotification('Ошибка загрузки данных, используется локальное хранилище', 'error');
+            // fallback на localStorage
+            const saved = localStorage.getItem('plustrack_web_data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                tracks = data.tracks || [];
+            }
+            renderAll();
+        }
+    }
+    
+    async function saveTracksToGitHub() {
+        try {
+            // получаем текущий файл (нужен SHA)
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+            let sha = null;
+            try {
+                const getResponse = await fetch(url, {
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                if (getResponse.ok) {
+                    const fileData = await getResponse.json();
+                    sha = fileData.sha;
+                }
+            } catch(e) {}
+            
+            // подготавливаем данные для сохранения
+            const tracksToSave = tracks.map(t => {
+                const { fileBlobUrl, coverUrl, ...rest } = t;
+                return rest;
+            });
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify({ tracks: tracksToSave }, null, 2))));
+            
+            const body = {
+                message: `Обновление треков ${new Date().toLocaleString()}`,
+                content: content,
+                branch: "main"
+            };
+            if (sha) body.sha = sha;
+            
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+            if (response.ok) {
+                showNotification('Данные сохранены в GitHub', 'success');
+            } else {
+                throw new Error('Ошибка сохранения');
+            }
+        } catch(e) {
+            console.error('Ошибка сохранения в GitHub:', e);
+            showNotification('Не удалось сохранить в GitHub, данные сохранены локально', 'error');
+            // fallback на localStorage
+            const tracksToSave = tracks.map(t => {
+                const { fileBlobUrl, coverUrl, ...rest } = t;
+                return rest;
+            });
+            localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks: tracksToSave, currentUser, likedTracks: Array.from(likedTracks), playedTracks: Array.from(playedTracks) }));
+        }
+    }
+    
+    // ==================== ЗАГРУЗКА / СОХРАНЕНИЕ (локальный fallback) ====================
+    function loadLocalData() {
         const saved = localStorage.getItem('plustrack_web_data');
         if (saved) {
             const data = JSON.parse(saved);
@@ -377,14 +476,13 @@
             if (data.likedTracks) likedTracks = new Set(data.likedTracks);
             if (data.playedTracks) playedTracks = new Set(data.playedTracks);
         } else {
-            // демо-треки (без реальных файлов, будут показывать уведомление)
             tracks = [
                 { id: "1", title: "Ночь", artist: "Улица Восток", genre: "Рок", userId: "admin", status: "approved", likes: 15, plays: 128 },
                 { id: "2", title: "Рассвет", artist: "Елена Солнцева", genre: "Поп", userId: "admin", status: "approved", likes: 23, plays: 245 },
-                { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567 }
+                { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567 },
+                { id: "demo", title: "Тестовый трек", artist: "Новый артист", genre: "Поп", userId: "user", status: "pending", likes: 0, plays: 0 }
             ];
         }
-        // восстановить blob-ссылки из сохранённых бинарных данных
         for (let track of tracks) {
             if (track.fileData) {
                 const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
@@ -399,23 +497,16 @@
                 track.coverUrl = url;
             }
         }
-        saveData(); // чтобы синхронизировать с localStorage
     }
-
-    function saveData() {
-        // убираем временные URL перед сохранением
+    
+    function saveLocalData() {
         const tracksToSave = tracks.map(t => {
             const { fileBlobUrl, coverUrl, ...rest } = t;
             return rest;
         });
-        localStorage.setItem('plustrack_web_data', JSON.stringify({
-            tracks: tracksToSave,
-            currentUser,
-            likedTracks: Array.from(likedTracks),
-            playedTracks: Array.from(playedTracks)
-        }));
+        localStorage.setItem('plustrack_web_data', JSON.stringify({ tracks: tracksToSave, currentUser, likedTracks: Array.from(likedTracks), playedTracks: Array.from(playedTracks) }));
     }
-
+    
     function showNotification(msg, type) {
         const div = document.createElement('div');
         div.className = 'notification';
@@ -424,53 +515,48 @@
         document.body.appendChild(div);
         setTimeout(() => div.remove(), 3000);
     }
-
+    
     // ==================== ВОСПРОИЗВЕДЕНИЕ ====================
     function playTrack(track) {
         if (!track) return;
         if (track.status !== 'approved') {
-            showNotification('Этот трек недоступен для прослушивания (статус: ' + track.status + ')', 'error');
+            showNotification('Этот трек недоступен для прослушивания', 'error');
             return;
         }
-        // если есть сохранённый blob
         let url = audioBlobUrls.get(track.id);
         if (url) {
             audio.src = url;
         } else if (track.fileData) {
-            // восстановить из fileData (на случай потери ссылки)
             const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
             url = URL.createObjectURL(blob);
             audioBlobUrls.set(track.id, url);
             track.fileBlobUrl = url;
             audio.src = url;
         } else {
-            // демо-трек без файла — только уведомление
-            showNotification(`🎵 Демо: ${track.title} - ${track.artist} (файл отсутствует)`, 'info');
+            showNotification(`🎵 Демо: ${track.title} - ${track.artist}`, 'info');
             document.getElementById('currentTrackTitle').textContent = track.title;
             document.getElementById('currentTrackArtist').textContent = track.artist;
             document.getElementById('player').classList.add('active');
             currentTrackId = track.id;
             return;
         }
-
         audio.load();
-        audio.play().catch(e => console.log('Автовоспроизведение заблокировано', e));
+        audio.play().catch(e => console.log('Автовоспроизведение заблокировано'));
         document.getElementById('currentTrackTitle').textContent = track.title;
         document.getElementById('currentTrackArtist').textContent = track.artist;
         document.getElementById('player').classList.add('active');
         currentTrackId = track.id;
         isPlaying = true;
         document.getElementById('playBtn').innerHTML = '<i class="fas fa-pause"></i>';
-
-        // увеличиваем счётчик только один раз за трек
         if (!playedTracks.has(track.id)) {
             track.plays = (track.plays || 0) + 1;
             playedTracks.add(track.id);
-            saveData();
+            saveLocalData();
+            saveTracksToGitHub();
             renderAll();
         }
     }
-
+    
     function togglePlay() {
         if (!audio.src && currentTrackId) {
             const track = tracks.find(t => t.id === currentTrackId);
@@ -486,14 +572,14 @@
         }
         isPlaying = !isPlaying;
     }
-
+    
     function setVolume(val) {
         const vol = Math.max(0, Math.min(100, val));
         audio.volume = vol / 100;
         document.getElementById('volumeSlider').value = vol;
     }
-
-    // ==================== ЛАЙКИ (защита от накрутки) ====================
+    
+    // ==================== ЛАЙКИ ====================
     function likeTrack(trackId) {
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
@@ -508,12 +594,13 @@
         }
         track.likes = (track.likes || 0) + 1;
         likedTracks.add(key);
-        saveData();
+        saveLocalData();
+        saveTracksToGitHub();
         renderAll();
         showNotification(`❤️ Лайк треку "${track.title}"!`, 'success');
     }
-
-    // ==================== УДАЛЕНИЕ ТРЕКА (только модератор) ====================
+    
+    // ==================== УДАЛЕНИЕ ====================
     function deleteTrack(trackId) {
         if (!isModerator) {
             showNotification('Только модератор может удалять треки', 'error');
@@ -522,7 +609,6 @@
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
         if (confirm(`Удалить трек "${track.title}"?`)) {
-            // освобождаем blob-ссылки
             if (audioBlobUrls.has(track.id)) {
                 URL.revokeObjectURL(audioBlobUrls.get(track.id));
                 audioBlobUrls.delete(track.id);
@@ -532,7 +618,8 @@
                 coverBlobUrls.delete(track.id);
             }
             tracks = tracks.filter(t => t.id !== trackId);
-            saveData();
+            saveLocalData();
+            saveTracksToGitHub();
             renderAll();
             showNotification(`🗑️ Трек "${track.title}" удален`, 'info');
             if (currentTrackId === trackId) {
@@ -544,8 +631,8 @@
             }
         }
     }
-
-    // ==================== ЗАГРУЗКА ТРЕКА (аудио + обложка) ====================
+    
+    // ==================== ЗАГРУЗКА ТРЕКА ====================
     function uploadTrack(title, artist, genre, audioFile, coverFile) {
         if (!currentUser) {
             showNotification('Войдите в аккаунт для загрузки треков', 'error');
@@ -572,7 +659,6 @@
                     fileData: Array.from(audioArray)
                 };
                 if (coverArray) newTrack.coverData = Array.from(coverArray);
-                // создаём blob для проигрывания
                 const audioBlob = new Blob([audioArray], { type: 'audio/mpeg' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 audioBlobUrls.set(newTrack.id, audioUrl);
@@ -584,7 +670,8 @@
                     newTrack.coverUrl = coverUrl;
                 }
                 tracks.push(newTrack);
-                saveData();
+                saveLocalData();
+                saveTracksToGitHub();
                 renderAll();
                 showNotification(`📤 Трек "${title}" отправлен на модерацию!`, 'success');
             };
@@ -601,28 +688,30 @@
         readerAudio.readAsArrayBuffer(audioFile);
         return true;
     }
-
+    
     // ==================== МОДЕРАЦИЯ ====================
     function approveTrack(trackId) {
         const track = tracks.find(t => t.id === trackId);
         if (track) {
             track.status = 'approved';
-            saveData();
+            saveLocalData();
+            saveTracksToGitHub();
             renderAll();
             showNotification(`✅ Трек "${track.title}" одобрен!`, 'success');
         }
     }
-
+    
     function rejectTrack(trackId) {
         const track = tracks.find(t => t.id === trackId);
         if (track) {
             track.status = 'rejected';
-            saveData();
+            saveLocalData();
+            saveTracksToGitHub();
             renderAll();
             showNotification(`❌ Трек "${track.title}" отклонен`, 'error');
         }
     }
-
+    
     // ==================== ОТРИСОВКА ====================
     function renderTracks(tracksList, container, showActions = true, isModerationView = false) {
         if (!container) return;
@@ -633,7 +722,6 @@
         container.innerHTML = tracksList.map(track => {
             const userLiked = currentUser ? likedTracks.has(`${currentUser.username}_${track.id}`) : false;
             const coverStyle = track.coverUrl ? `background-image: url('${track.coverUrl}'); background-size: cover; background-position: center;` : '';
-            // для модерации показываем кнопку прослушивания даже для ожидающих треков (предпросмотр)
             const showPreview = (isModerationView && track.status === 'pending') || (track.status === 'approved');
             const showDelete = isModerator;
             return `
@@ -649,22 +737,22 @@
                     </div>
                     ${showPreview ? `
                         <div class="track-actions">
-                            <button class="btn-play" onclick="playTrackById('${track.id}')">▶ Прослушать</button>
-                            ${track.status === 'approved' ? `<button class="btn-like ${userLiked ? 'liked' : ''}" onclick="likeTrackById('${track.id}')">${userLiked ? '❤️' : '🤍'} Лайк</button>` : ''}
-                            ${showDelete ? `<button class="btn-delete" onclick="deleteTrackById('${track.id}')">🗑️ Удалить</button>` : ''}
+                            <button class="btn-play" onclick="window.playTrackById('${track.id}')">▶ Прослушать</button>
+                            ${track.status === 'approved' ? `<button class="btn-like ${userLiked ? 'liked' : ''}" onclick="window.likeTrackById('${track.id}')">${userLiked ? '❤️' : '🤍'} Лайк</button>` : ''}
+                            ${showDelete ? `<button class="btn-delete" onclick="window.deleteTrackById('${track.id}')">🗑️ Удалить</button>` : ''}
                         </div>
                     ` : ''}
                     ${isModerationView && track.status === 'pending' && isModerator ? `
                         <div class="moderation-actions">
-                            <button class="btn-approve" onclick="approveTrackById('${track.id}')">✅ Одобрить</button>
-                            <button class="btn-reject" onclick="rejectTrackById('${track.id}')">❌ Отклонить</button>
+                            <button class="btn-approve" onclick="window.approveTrackById('${track.id}')">✅ Одобрить</button>
+                            <button class="btn-reject" onclick="window.rejectTrackById('${track.id}')">❌ Отклонить</button>
                         </div>
                     ` : ''}
                 </div>
             `;
         }).join('');
     }
-
+    
     function renderAll() {
         const approved = tracks.filter(t => t.status === 'approved');
         renderTracks(approved.slice(0, 4), document.getElementById('recommendationsGrid'), true);
@@ -685,8 +773,40 @@
             document.getElementById('moderationTab').style.display = 'none';
         }
     }
-
-    // ==================== ПРОФИЛЬ ====================
+    
+    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+    
+    // глобальные вызовы для onclick
+    window.playTrackById = (id) => { const track = tracks.find(t => t.id === id); if (track) playTrack(track); };
+    window.likeTrackById = (id) => likeTrack(id);
+    window.approveTrackById = (id) => approveTrack(id);
+    window.rejectTrackById = (id) => rejectTrack(id);
+    window.deleteTrackById = (id) => deleteTrack(id);
+    
+    // ==================== НАВИГАЦИЯ ====================
+    function showPage(page) {
+        document.getElementById('homePage').style.display = page === 'home' ? 'block' : 'none';
+        document.getElementById('myTracksPage').style.display = page === 'my-tracks' ? 'block' : 'none';
+        document.getElementById('moderationPage').style.display = page === 'moderation' ? 'block' : 'none';
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.page === page));
+        renderAll();
+    }
+    
+    function updateUserUI() {
+        if (currentUser) {
+            document.getElementById('userName').textContent = currentUser.username;
+            document.getElementById('userAvatar').textContent = currentUser.username[0].toUpperCase();
+            document.getElementById('authBtn').textContent = 'Выйти';
+            document.getElementById('profileBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('userName').textContent = 'Гость';
+            document.getElementById('userAvatar').textContent = '?';
+            document.getElementById('authBtn').textContent = 'Войти';
+            document.getElementById('profileBtn').style.display = 'none';
+            isModerator = false;
+        }
+    }
+    
     function showProfileModal() {
         if (!currentUser) return;
         const myTracks = tracks.filter(t => t.userId === currentUser.username);
@@ -702,61 +822,32 @@
         `;
         document.getElementById('profileModal').style.display = 'flex';
     }
-
-    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
-
-    // глобальные вызовы для onclick
-    window.playTrackById = (id) => { const track = tracks.find(t => t.id === id); if (track) playTrack(track); };
-    window.likeTrackById = (id) => likeTrack(id);
-    window.approveTrackById = (id) => approveTrack(id);
-    window.rejectTrackById = (id) => rejectTrack(id);
-    window.deleteTrackById = (id) => deleteTrack(id);
-
-    // ==================== НАВИГАЦИЯ ====================
-    function showPage(page) {
-        document.getElementById('homePage').style.display = page === 'home' ? 'block' : 'none';
-        document.getElementById('myTracksPage').style.display = page === 'my-tracks' ? 'block' : 'none';
-        document.getElementById('moderationPage').style.display = page === 'moderation' ? 'block' : 'none';
-        document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.page === page));
-        renderAll();
-    }
-
-    function updateUserUI() {
-        if (currentUser) {
-            document.getElementById('userName').textContent = currentUser.username;
-            document.getElementById('userAvatar').textContent = currentUser.username[0].toUpperCase();
-            document.getElementById('authBtn').textContent = 'Выйти';
-            document.getElementById('profileBtn').style.display = 'inline-block';
-        } else {
-            document.getElementById('userName').textContent = 'Гость';
-            document.getElementById('userAvatar').textContent = '?';
-            document.getElementById('authBtn').textContent = 'Войти';
-            document.getElementById('profileBtn').style.display = 'none';
-            isModerator = false;
-        }
-    }
-
+    
     // ==================== ИНИЦИАЛИЗАЦИЯ ====================
-    function init() {
-        loadData();
+    async function init() {
+        // пробуем загрузить из GitHub, если не получается — локально
+        if (GITHUB_TOKEN && GITHUB_TOKEN !== "ghp_ВАШ_ТОКЕН_ЗДЕСЬ") {
+            await loadTracksFromGitHub();
+        } else {
+            loadLocalData();
+            showNotification('GitHub не настроен, данные хранятся локально', 'info');
+        }
         updateUserUI();
         renderAll();
-
-        // громкость
-        const volSlider = document.getElementById('volumeSlider');
-        volSlider.addEventListener('input', (e) => setVolume(e.target.value));
+        
+        const volumeSlider = document.getElementById('volumeSlider');
+        volumeSlider.addEventListener('input', (e) => setVolume(e.target.value));
         document.getElementById('volumeDown').onclick = () => setVolume(audio.volume * 100 - 10);
         document.getElementById('volumeUp').onclick = () => setVolume(audio.volume * 100 + 10);
         setVolume(70);
-
-        // события авторизации
+        
         document.getElementById('authBtn').onclick = () => {
             if (currentUser) {
                 currentUser = null;
                 isModerator = false;
                 likedTracks.clear();
                 playedTracks.clear();
-                saveData();
+                saveLocalData();
                 updateUserUI();
                 renderAll();
                 showNotification('Вы вышли из аккаунта', 'info');
@@ -774,7 +865,7 @@
             isModerator = false;
             likedTracks.clear();
             playedTracks.clear();
-            saveData();
+            saveLocalData();
             updateUserUI();
             renderAll();
             document.getElementById('profileModal').style.display = 'none';
@@ -802,7 +893,7 @@
             const pass = document.getElementById('loginPassword').value;
             if (user && pass) {
                 currentUser = { username: user };
-                saveData();
+                saveLocalData();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
@@ -816,15 +907,13 @@
             const pass = document.getElementById('regPassword').value;
             if (user && pass) {
                 currentUser = { username: user };
-                saveData();
+                saveLocalData();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
                 showNotification(`Аккаунт ${user} создан!`, 'success');
             }
         };
-
-        // загрузка трека
         document.getElementById('uploadBtn').onclick = () => currentUser ? document.getElementById('uploadModal').style.display = 'flex' : showNotification('Войдите в аккаунт', 'error');
         document.getElementById('myUploadBtn').onclick = () => currentUser ? document.getElementById('uploadModal').style.display = 'flex' : showNotification('Войдите в аккаунт', 'error');
         document.getElementById('submitUpload').onclick = () => {
@@ -843,27 +932,13 @@
             document.getElementById('trackCover').value = '';
         };
         document.getElementById('closeModal').onclick = () => document.getElementById('uploadModal').style.display = 'none';
-
-        // навигация
         document.querySelectorAll('.nav-link').forEach(link => link.onclick = () => showPage(link.dataset.page));
-
-        // плеер
         document.getElementById('playBtn').onclick = togglePlay;
-        audio.ontimeupdate = () => {
-            if (audio.duration) document.getElementById('progressFill').style.width = (audio.currentTime / audio.duration * 100) + '%';
-        };
-        audio.onended = () => {
-            isPlaying = false;
-            document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>';
-        };
-        document.getElementById('progressBar').onclick = (e) => {
-            if (audio.duration) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
-            }
-        };
+        audio.ontimeupdate = () => { if (audio.duration) document.getElementById('progressFill').style.width = (audio.currentTime / audio.duration * 100) + '%'; };
+        audio.onended = () => { isPlaying = false; document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>'; };
+        document.getElementById('progressBar').onclick = (e) => { if (audio.duration) { const rect = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration; } };
     }
-
+    
     init();
 </script>
 </body>
