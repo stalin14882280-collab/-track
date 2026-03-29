@@ -387,7 +387,6 @@
 
 <script>
     // ==================== НАСТРОЙКИ FIREBASE ====================
-    // ВАШ КОНФИГ ИЗ FIREBASE (вставлен автоматически)
     const firebaseConfig = {
         apiKey: "AIzaSyDjsmFwHhYEcDY87q4pBWXpMGURS2dHI",
         authDomain: "plustrack-music.firebaseapp.com",
@@ -399,7 +398,6 @@
         measurementId: "G-624NZEBCT8"
     };
     
-    // Инициализация Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const dbRef = database.ref('plustrack');
@@ -413,8 +411,6 @@
     let currentTrackId = null;
     let likedTracks = new Set();
     let playedTracks = new Set();
-    let audioBlobUrls = new Map();
-    let coverBlobUrls = new Map();
     let currentMyTab = "all";
     let isLoading = false;
     
@@ -423,7 +419,6 @@
         if (isLoading) return;
         isLoading = true;
         document.getElementById('syncStatus').innerHTML = '☁️ загрузка...';
-        showNotification('Синхронизация с облаком...', 'info');
         
         try {
             const snapshot = await dbRef.once('value');
@@ -434,34 +429,15 @@
                 if (data.likedTracks) likedTracks = new Set(data.likedTracks);
                 if (data.playedTracks) playedTracks = new Set(data.playedTracks);
                 if (data.currentUser) currentUser = data.currentUser;
-                
-                // Восстанавливаем blob-ссылки
-                for (let track of tracks) {
-                    if (track.fileData) {
-                        const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
-                        const url = URL.createObjectURL(blob);
-                        audioBlobUrls.set(track.id, url);
-                        track.fileBlobUrl = url;
-                    }
-                    if (track.coverData) {
-                        const blob = new Blob([new Uint8Array(track.coverData)], { type: 'image/jpeg' });
-                        const url = URL.createObjectURL(blob);
-                        coverBlobUrls.set(track.id, url);
-                        track.coverUrl = url;
-                    }
-                }
                 document.getElementById('syncStatus').innerHTML = '☁️ загружено';
-                showNotification(`Загружено ${tracks.length} треков из облака`, 'success');
                 setTimeout(() => {
                     document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
                 }, 2000);
             } else {
-                // Нет данных в облаке — используем локальные
                 loadLocalData();
             }
         } catch (e) {
             console.error('Ошибка загрузки из Firebase:', e);
-            showNotification('Ошибка синхронизации, использую локальные данные', 'error');
             loadLocalData();
         }
         
@@ -483,20 +459,15 @@
                 currentUser: currentUser,
                 lastUpdated: new Date().toISOString()
             });
-            document.getElementById('syncStatus').innerHTML = '☁️ сохранено';
-            setTimeout(() => {
-                document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
-            }, 2000);
             console.log('Сохранено в Firebase');
         } catch (e) {
             console.error('Ошибка сохранения в Firebase:', e);
         }
-        saveLocalData();
     }
     
-    // ==================== ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ====================
+    // ==================== ЛОКАЛЬНОЕ ХРАНИЛИЩЕ (только для метаданных) ====================
     function loadLocalData() {
-        const saved = localStorage.getItem('plustrack_web_data');
+        const saved = localStorage.getItem('plustrack_meta');
         if (saved) {
             const data = JSON.parse(saved);
             tracks = data.tracks || [];
@@ -510,20 +481,6 @@
                 { id: "3", title: "Электро-ритм", artist: "DJ Pulse", genre: "Электроника", userId: "admin", status: "approved", likes: 42, plays: 567 }
             ];
         }
-        for (let track of tracks) {
-            if (track.fileData) {
-                const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
-                const url = URL.createObjectURL(blob);
-                audioBlobUrls.set(track.id, url);
-                track.fileBlobUrl = url;
-            }
-            if (track.coverData) {
-                const blob = new Blob([new Uint8Array(track.coverData)], { type: 'image/jpeg' });
-                const url = URL.createObjectURL(blob);
-                coverBlobUrls.set(track.id, url);
-                track.coverUrl = url;
-            }
-        }
     }
     
     function saveLocalData() {
@@ -531,7 +488,7 @@
             const { fileBlobUrl, coverUrl, ...rest } = t;
             return rest;
         });
-        localStorage.setItem('plustrack_web_data', JSON.stringify({
+        localStorage.setItem('plustrack_meta', JSON.stringify({
             tracks: tracksToSave,
             currentUser,
             likedTracks: Array.from(likedTracks),
@@ -555,31 +512,22 @@
             showNotification('Этот трек недоступен для прослушивания', 'error');
             return;
         }
-        let url = audioBlobUrls.get(track.id);
-        if (url) {
-            audio.src = url;
-        } else if (track.fileData) {
+        if (track.fileData) {
             const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
-            url = URL.createObjectURL(blob);
-            audioBlobUrls.set(track.id, url);
-            track.fileBlobUrl = url;
+            const url = URL.createObjectURL(blob);
             audio.src = url;
+            audio.load();
+            audio.play().catch(e => console.log('Автовоспроизведение заблокировано'));
         } else {
             showNotification(`🎵 Демо: ${track.title} - ${track.artist}`, 'info');
-            document.getElementById('currentTrackTitle').textContent = track.title;
-            document.getElementById('currentTrackArtist').textContent = track.artist;
-            document.getElementById('player').classList.add('active');
-            currentTrackId = track.id;
-            return;
         }
-        audio.load();
-        audio.play().catch(e => console.log('Автовоспроизведение заблокировано'));
         document.getElementById('currentTrackTitle').textContent = track.title;
         document.getElementById('currentTrackArtist').textContent = track.artist;
         document.getElementById('player').classList.add('active');
         currentTrackId = track.id;
         isPlaying = true;
         document.getElementById('playBtn').innerHTML = '<i class="fas fa-pause"></i>';
+        
         if (!playedTracks.has(track.id)) {
             track.plays = (track.plays || 0) + 1;
             playedTracks.add(track.id);
@@ -641,14 +589,6 @@
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
         if (confirm(`Удалить трек "${track.title}"?`)) {
-            if (audioBlobUrls.has(track.id)) {
-                URL.revokeObjectURL(audioBlobUrls.get(track.id));
-                audioBlobUrls.delete(track.id);
-            }
-            if (coverBlobUrls.has(track.id)) {
-                URL.revokeObjectURL(coverBlobUrls.get(track.id));
-                coverBlobUrls.delete(track.id);
-            }
             tracks = tracks.filter(t => t.id !== trackId);
             saveLocalData();
             saveToFirebase();
@@ -691,16 +631,6 @@
                     fileData: Array.from(audioArray)
                 };
                 if (coverArray) newTrack.coverData = Array.from(coverArray);
-                const audioBlob = new Blob([audioArray], { type: 'audio/mpeg' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                audioBlobUrls.set(newTrack.id, audioUrl);
-                newTrack.fileBlobUrl = audioUrl;
-                if (coverArray) {
-                    const coverBlob = new Blob([coverArray], { type: 'image/jpeg' });
-                    const coverUrl = URL.createObjectURL(coverBlob);
-                    coverBlobUrls.set(newTrack.id, coverUrl);
-                    newTrack.coverUrl = coverUrl;
-                }
                 tracks.push(newTrack);
                 saveLocalData();
                 saveToFirebase();
@@ -753,12 +683,12 @@
         }
         container.innerHTML = tracksList.map(track => {
             const userLiked = currentUser ? likedTracks.has(`${currentUser.username}_${track.id}`) : false;
-            const coverStyle = track.coverUrl ? `background-image: url('${track.coverUrl}'); background-size: cover; background-position: center;` : '';
+            const coverStyle = track.coverData ? `background-image: url('${URL.createObjectURL(new Blob([new Uint8Array(track.coverData)], { type: 'image/jpeg' }))}'); background-size: cover; background-position: center;` : '';
             const showPreview = (isModerationView && track.status === 'pending') || (track.status === 'approved');
             const showDelete = isModerator;
             return `
                 <div class="track-card">
-                    <div class="track-cover" style="${coverStyle}">${!track.coverUrl ? '🎵' : ''}</div>
+                    <div class="track-cover" style="${coverStyle}">${!track.coverData ? '🎵' : ''}</div>
                     <div class="track-title">${escapeHtml(track.title)}</div>
                     <div class="track-artist">${escapeHtml(track.artist)}</div>
                     <div class="track-meta">
@@ -876,10 +806,9 @@
         updateUserUI();
         renderAll();
         
-        // Автосохранение каждые 15 секунд
         setInterval(() => {
             saveToFirebase();
-        }, 15000);
+        }, 25000);
         
         document.querySelectorAll('.my-tab').forEach(tab => {
             tab.onclick = () => {
