@@ -247,6 +247,13 @@
         .my-tab:hover:not(.active) {
             background: rgba(255,255,255,0.1);
         }
+        .sync-status {
+            font-size: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 10px;
+        }
         @media (max-width: 768px) {
             .hero h1 { font-size: 32px; }
             .tracks-grid { grid-template-columns: 1fr; }
@@ -266,6 +273,7 @@
         <div class="user-info" id="userInfo">
             <div class="avatar" id="userAvatar">?</div>
             <span id="userName">Гость</span>
+            <span id="syncStatus" class="sync-status">☁️ синхронизация</span>
             <button class="btn-outline" id="authBtn" style="padding: 5px 15px;">Войти</button>
             <button class="btn-outline" id="profileBtn" style="display: none;">👤 Профиль</button>
         </div>
@@ -376,6 +384,12 @@
 </div>
 
 <script>
+    // ==================== НАСТРОЙКИ GOOGLE DRIVE ====================
+    // ВАШИ ДАННЫЕ:
+    const GOOGLE_API_KEY = "AlzaSyBOaZx-q_eNKql_aJJQtxYw5W0qtcSd7H4";
+    const FOLDER_ID = "1Llj6XjOLhGA7hFVXEpZtN5TnkmrMc7sJ";
+    const FILE_NAME = "plustrack_data.json";
+    
     // ==================== ГЛОБАЛЬНЫЕ ДАННЫЕ ====================
     let currentUser = null;
     let isModerator = false;
@@ -388,9 +402,135 @@
     let audioBlobUrls = new Map();
     let coverBlobUrls = new Map();
     let currentMyTab = "all";
-
+    let syncTimer = null;
+    
+    // ==================== СИНХРОНИЗАЦИЯ С GOOGLE DRIVE ====================
+    async function getFileId() {
+        try {
+            const url = `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}' and '${FOLDER_ID}' in parents&key=${GOOGLE_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.files && data.files.length > 0) {
+                return data.files[0].id;
+            }
+            return null;
+        } catch (e) {
+            console.error('Ошибка поиска файла:', e);
+            return null;
+        }
+    }
+    
+    async function saveToDrive(data) {
+        try {
+            const fileContent = JSON.stringify(data, null, 2);
+            const blob = new Blob([fileContent], { type: 'application/json' });
+            const existingFileId = await getFileId();
+            
+            let url, method, body;
+            if (existingFileId) {
+                // Обновляем существующий файл
+                url = `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=media&key=${GOOGLE_API_KEY}`;
+                method = 'PATCH';
+                body = blob;
+            } else {
+                // Создаём новый файл
+                url = `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${GOOGLE_API_KEY}`;
+                method = 'POST';
+                const metadata = {
+                    name: FILE_NAME,
+                    parents: [FOLDER_ID],
+                    mimeType: 'application/json'
+                };
+                const formData = new FormData();
+                formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                formData.append('file', blob);
+                body = formData;
+            }
+            
+            const response = await fetch(url, {
+                method: method,
+                body: body,
+                headers: existingFileId ? { 'Content-Type': 'application/json' } : {}
+            });
+            
+            if (response.ok) {
+                document.getElementById('syncStatus').innerHTML = '☁️ сохранено';
+                setTimeout(() => {
+                    document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
+                }, 2000);
+                return true;
+            } else {
+                console.error('Ошибка сохранения:', await response.text());
+                return false;
+            }
+        } catch (e) {
+            console.error('Ошибка сохранения в Drive:', e);
+            return false;
+        }
+    }
+    
+    async function loadFromDrive() {
+        try {
+            const fileId = await getFileId();
+            if (!fileId) {
+                console.log('Файл не найден, используем локальные данные');
+                return false;
+            }
+            
+            const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${GOOGLE_API_KEY}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Ошибка загрузки');
+            const data = await response.json();
+            
+            if (data.tracks) {
+                tracks = data.tracks;
+                if (data.likedTracks) likedTracks = new Set(data.likedTracks);
+                if (data.playedTracks) playedTracks = new Set(data.playedTracks);
+                
+                // Восстанавливаем blob-ссылки для файлов
+                for (let track of tracks) {
+                    if (track.fileData) {
+                        const blob = new Blob([new Uint8Array(track.fileData)], { type: 'audio/mpeg' });
+                        const url = URL.createObjectURL(blob);
+                        audioBlobUrls.set(track.id, url);
+                        track.fileBlobUrl = url;
+                    }
+                    if (track.coverData) {
+                        const blob = new Blob([new Uint8Array(track.coverData)], { type: 'image/jpeg' });
+                        const url = URL.createObjectURL(blob);
+                        coverBlobUrls.set(track.id, url);
+                        track.coverUrl = url;
+                    }
+                }
+                document.getElementById('syncStatus').innerHTML = '☁️ загружено';
+                setTimeout(() => {
+                    document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
+                }, 2000);
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error('Ошибка загрузки из Drive:', e);
+            return false;
+        }
+    }
+    
+    async function syncToCloud() {
+        const dataToSave = {
+            tracks: tracks.map(t => {
+                const { fileBlobUrl, coverUrl, ...rest } = t;
+                return rest;
+            }),
+            likedTracks: Array.from(likedTracks),
+            playedTracks: Array.from(playedTracks),
+            lastUpdated: new Date().toISOString()
+        };
+        await saveToDrive(dataToSave);
+        saveLocalData();
+    }
+    
     // ==================== ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ====================
-    function loadData() {
+    function loadLocalData() {
         const saved = localStorage.getItem('plustrack_web_data');
         if (saved) {
             const data = JSON.parse(saved);
@@ -420,8 +560,8 @@
             }
         }
     }
-
-    function saveData() {
+    
+    function saveLocalData() {
         const tracksToSave = tracks.map(t => {
             const { fileBlobUrl, coverUrl, ...rest } = t;
             return rest;
@@ -433,7 +573,7 @@
             playedTracks: Array.from(playedTracks)
         }));
     }
-
+    
     function showNotification(msg, type) {
         const div = document.createElement('div');
         div.className = 'notification';
@@ -442,7 +582,7 @@
         document.body.appendChild(div);
         setTimeout(() => div.remove(), 3000);
     }
-
+    
     // ==================== ВОСПРОИЗВЕДЕНИЕ ====================
     function playTrack(track) {
         if (!track) return;
@@ -478,11 +618,12 @@
         if (!playedTracks.has(track.id)) {
             track.plays = (track.plays || 0) + 1;
             playedTracks.add(track.id);
-            saveData();
+            saveLocalData();
+            syncToCloud();
             renderAll();
         }
     }
-
+    
     function togglePlay() {
         if (!audio.src && currentTrackId) {
             const track = tracks.find(t => t.id === currentTrackId);
@@ -498,13 +639,13 @@
         }
         isPlaying = !isPlaying;
     }
-
+    
     function setVolume(val) {
         const vol = Math.max(0, Math.min(100, val));
         audio.volume = vol / 100;
         document.getElementById('volumeSlider').value = vol;
     }
-
+    
     // ==================== ЛАЙКИ ====================
     function likeTrack(trackId) {
         const track = tracks.find(t => t.id === trackId);
@@ -520,11 +661,12 @@
         }
         track.likes = (track.likes || 0) + 1;
         likedTracks.add(key);
-        saveData();
+        saveLocalData();
+        syncToCloud();
         renderAll();
         showNotification(`❤️ Лайк треку "${track.title}"!`, 'success');
     }
-
+    
     // ==================== УДАЛЕНИЕ ====================
     function deleteTrack(trackId) {
         if (!isModerator) {
@@ -543,7 +685,8 @@
                 coverBlobUrls.delete(track.id);
             }
             tracks = tracks.filter(t => t.id !== trackId);
-            saveData();
+            saveLocalData();
+            syncToCloud();
             renderAll();
             showNotification(`🗑️ Трек "${track.title}" удален`, 'info');
             if (currentTrackId === trackId) {
@@ -555,7 +698,7 @@
             }
         }
     }
-
+    
     // ==================== ЗАГРУЗКА ТРЕКА ====================
     function uploadTrack(title, artist, genre, audioFile, coverFile) {
         if (!currentUser) {
@@ -594,7 +737,8 @@
                     newTrack.coverUrl = coverUrl;
                 }
                 tracks.push(newTrack);
-                saveData();
+                saveLocalData();
+                syncToCloud();
                 renderAll();
                 showNotification(`📤 Трек "${title}" отправлен на модерацию!`, 'success');
             };
@@ -611,28 +755,30 @@
         readerAudio.readAsArrayBuffer(audioFile);
         return true;
     }
-
+    
     // ==================== МОДЕРАЦИЯ ====================
     function approveTrack(trackId) {
         const track = tracks.find(t => t.id === trackId);
         if (track) {
             track.status = 'approved';
-            saveData();
+            saveLocalData();
+            syncToCloud();
             renderAll();
             showNotification(`✅ Трек "${track.title}" одобрен!`, 'success');
         }
     }
-
+    
     function rejectTrack(trackId) {
         const track = tracks.find(t => t.id === trackId);
         if (track) {
             track.status = 'rejected';
-            saveData();
+            saveLocalData();
+            syncToCloud();
             renderAll();
             showNotification(`❌ Трек "${track.title}" отклонен`, 'error');
         }
     }
-
+    
     // ==================== ОТРИСОВКА ====================
     function renderTracks(tracksList, container, showActions = true, isModerationView = false) {
         if (!container) return;
@@ -673,7 +819,7 @@
             `;
         }).join('');
     }
-
+    
     function renderMyTracks() {
         if (!currentUser) {
             document.getElementById('myTracksContainer').innerHTML = '<div style="text-align:center;padding:50px;">Войдите в аккаунт, чтобы видеть свои треки</div>';
@@ -712,15 +858,15 @@
             document.getElementById('moderationTab').style.display = 'none';
         }
     }
-
+    
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
-
+    
     window.playTrackById = (id) => { const track = tracks.find(t => t.id === id); if (track) playTrack(track); };
     window.likeTrackById = (id) => likeTrack(id);
     window.approveTrackById = (id) => approveTrack(id);
     window.rejectTrackById = (id) => rejectTrack(id);
     window.deleteTrackById = (id) => deleteTrack(id);
-
+    
     function showPage(page) {
         document.getElementById('homePage').style.display = page === 'home' ? 'block' : 'none';
         document.getElementById('myTracksPage').style.display = page === 'my-tracks' ? 'block' : 'none';
@@ -728,7 +874,7 @@
         document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.page === page));
         renderAll();
     }
-
+    
     function updateUserUI() {
         if (currentUser) {
             document.getElementById('userName').textContent = currentUser.username;
@@ -743,7 +889,7 @@
             isModerator = false;
         }
     }
-
+    
     function showProfileModal() {
         if (!currentUser) return;
         const myTracks = tracks.filter(t => t.userId === currentUser.username);
@@ -759,13 +905,23 @@
         `;
         document.getElementById('profileModal').style.display = 'flex';
     }
-
-    function init() {
-        loadData();
+    
+    async function init() {
+        document.getElementById('syncStatus').innerHTML = '☁️ загрузка...';
+        const loaded = await loadFromDrive();
+        if (!loaded) {
+            loadLocalData();
+            showNotification('Использую локальные данные', 'info');
+        }
+        document.getElementById('syncStatus').innerHTML = '☁️ синхронизация';
         updateUserUI();
         renderAll();
         
-        // Табы в Мои треки
+        // Автосохранение каждые 30 секунд
+        setInterval(() => {
+            syncToCloud();
+        }, 30000);
+        
         document.querySelectorAll('.my-tab').forEach(tab => {
             tab.onclick = () => {
                 document.querySelectorAll('.my-tab').forEach(t => t.classList.remove('active'));
@@ -780,14 +936,15 @@
         document.getElementById('volumeDown').onclick = () => setVolume(audio.volume * 100 - 10);
         document.getElementById('volumeUp').onclick = () => setVolume(audio.volume * 100 + 10);
         setVolume(70);
-
+        
         document.getElementById('authBtn').onclick = () => {
             if (currentUser) {
                 currentUser = null;
                 isModerator = false;
                 likedTracks.clear();
                 playedTracks.clear();
-                saveData();
+                saveLocalData();
+                syncToCloud();
                 updateUserUI();
                 renderAll();
                 showNotification('Вы вышли из аккаунта', 'info');
@@ -805,7 +962,8 @@
             isModerator = false;
             likedTracks.clear();
             playedTracks.clear();
-            saveData();
+            saveLocalData();
+            syncToCloud();
             updateUserUI();
             renderAll();
             document.getElementById('profileModal').style.display = 'none';
@@ -833,7 +991,8 @@
             const pass = document.getElementById('loginPassword').value;
             if (user && pass) {
                 currentUser = { username: user };
-                saveData();
+                saveLocalData();
+                syncToCloud();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
@@ -847,7 +1006,8 @@
             const pass = document.getElementById('regPassword').value;
             if (user && pass) {
                 currentUser = { username: user };
-                saveData();
+                saveLocalData();
+                syncToCloud();
                 updateUserUI();
                 document.getElementById('authModal').style.display = 'none';
                 renderAll();
@@ -878,7 +1038,7 @@
         audio.onended = () => { isPlaying = false; document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>'; };
         document.getElementById('progressBar').onclick = (e) => { if (audio.duration) { const rect = e.currentTarget.getBoundingClientRect(); audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration; } };
     }
-
+    
     init();
 </script>
 </body>
